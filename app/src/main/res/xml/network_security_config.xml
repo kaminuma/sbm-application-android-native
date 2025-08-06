@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 本番API用 - HTTPS強制 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.sbm-app.com</domain>
+    </domain-config>
+    
+    <!-- デバッグ用（開発時のみ） -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </debug-overrides>
+    
+    <!-- デフォルトでHTTP通信を禁止 -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

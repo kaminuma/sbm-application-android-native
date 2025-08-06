@@ -1,0 +1,50 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android Studio
+*.iws
+*.iml
+*.ipr
+out/
+
+# Gradle
+.gradle/
+build/
+
+# Local configuration files
+local.properties
+keystore.properties
+google-services.json
+
+# Log Files
+*.log
+
+# Android Profiling
+*.hprof
+
+# Security - Signing keys
+*.keystore
+*.jks
+
+# APK files
+*.apk
+
+## AI files
+.serena
+.claude
+.vscode
+.cursor
