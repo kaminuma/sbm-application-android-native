@@ -1,8 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+}
+
+// Load local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+
+// Function to get property safely
+fun getLocalProperty(key: String, defaultValue: String = ""): String {
+    return localProperties.getProperty(key) ?: defaultValue
 }
 
 android {
@@ -21,7 +35,14 @@ android {
             useSupportLibrary = true
         }
         
-        buildConfigField("String", "API_BASE_URL", "\"https://api.sbm-app.com/api/v1/\"")
+        buildConfigField("String", "API_BASE_URL", "\"${getLocalProperty("API_BASE_URL", "https://api.sbm-app.com/api/v1/")}\"")
+        
+        // AI Configuration
+        buildConfigField("String", "GEMINI_API_KEY", "\"${getLocalProperty("GEMINI_API_KEY", "")}\"")
+        
+        // TODO: プロキシAPI移行時に必要に応じて追加予定
+        // buildConfigField("String", "CUSTOM_API_URL", "...")
+        // buildConfigField("String", "CUSTOM_API_TOKEN", "...")
     }
 
     buildTypes {

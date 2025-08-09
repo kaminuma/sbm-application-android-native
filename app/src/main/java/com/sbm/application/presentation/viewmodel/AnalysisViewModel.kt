@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sbm.application.domain.model.Activity
 import com.sbm.application.domain.model.MoodRecord
+import com.sbm.application.domain.model.AIInsight
 import com.sbm.application.domain.repository.ActivityRepository
+import com.sbm.application.domain.repository.AIConfigRepository
 import com.sbm.application.domain.repository.MoodRepository
+import com.sbm.application.domain.usecase.GenerateAIInsightUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,13 +38,23 @@ data class AnalysisUiState(
     val moodTrendData: List<MoodTrendData> = emptyList(),
     val totalActivities: Int = 0,
     val averageMood: Float = 0f,
-    val mostActiveCategory: String = ""
+    val mostActiveCategory: String = "",
+    
+    // AI機能追加
+    val aiInsight: AIInsight? = null,
+    val isAiLoading: Boolean = false,
+    val aiError: String? = null,
+    val canGenerateAI: Boolean = false,
+    val selectedStartDate: String = "",
+    val selectedEndDate: String = ""
 )
 
 @HiltViewModel
 class AnalysisViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
-    private val moodRepository: MoodRepository
+    private val moodRepository: MoodRepository,
+    private val generateAIInsightUseCase: GenerateAIInsightUseCase,
+    private val aiConfigRepository: AIConfigRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalysisUiState())
@@ -93,7 +106,8 @@ class AnalysisViewModel @Inject constructor(
                     moodTrendData = moodTrendData,
                     totalActivities = activities.size,
                     averageMood = averageMood,
-                    mostActiveCategory = mostActiveCategory
+                    mostActiveCategory = mostActiveCategory,
+                    canGenerateAI = activities.isNotEmpty() || moodRecords.isNotEmpty()
                 )
                 
             } catch (exception: Exception) {
@@ -157,7 +171,8 @@ class AnalysisViewModel @Inject constructor(
                     moodTrendData = moodTrendData,
                     totalActivities = activities.size,
                     averageMood = averageMood,
-                    mostActiveCategory = mostActiveCategory
+                    mostActiveCategory = mostActiveCategory,
+                    canGenerateAI = activities.isNotEmpty() || moodRecords.isNotEmpty()
                 )
                 
             } catch (exception: Exception) {
@@ -216,5 +231,79 @@ class AnalysisViewModel @Inject constructor(
         } catch (e: Exception) {
             0.0
         }
+    }
+    
+    // AI機能関連メソッド
+    fun generateAIInsight() {
+        val currentState = _uiState.value
+        
+        viewModelScope.launch {
+            _uiState.value = currentState.copy(
+                isAiLoading = true,
+                aiError = null
+            )
+            
+            try {
+                // 現在のAI設定を取得
+                val aiConfig = aiConfigRepository.getConfig()
+                
+                // getCurrentDateRange()の重複呼び出しを最適化
+                val dateRange = getCurrentDateRange()
+                val result = generateAIInsightUseCase.execute(
+                    startDate = currentState.selectedStartDate.ifEmpty { dateRange.first },
+                    endDate = currentState.selectedEndDate.ifEmpty { dateRange.second },
+                    activities = currentState.activities,
+                    moodRecords = currentState.moodRecords,
+                    config = aiConfig
+                )
+                
+                result.onSuccess { response ->
+                    _uiState.value = currentState.copy(
+                        isAiLoading = false,
+                        aiInsight = response.data,
+                        aiError = if (!response.success) response.error else null
+                    )
+                }.onFailure { exception ->
+                    _uiState.value = currentState.copy(
+                        isAiLoading = false,
+                        aiError = exception.message
+                    )
+                }
+                
+            } catch (e: Exception) {
+                _uiState.value = currentState.copy(
+                    isAiLoading = false,
+                    aiError = e.message
+                )
+            }
+        }
+    }
+    
+    fun clearAIInsight() {
+        _uiState.value = _uiState.value.copy(
+            aiInsight = null,
+            aiError = null
+        )
+    }
+    
+    fun setDateRange(startDate: String, endDate: String) {
+        _uiState.value = _uiState.value.copy(
+            selectedStartDate = startDate,
+            selectedEndDate = endDate
+        )
+        
+        // 日付範囲が変更されたらデータを再読み込み
+        loadAnalysisData(startDate, endDate)
+    }
+    
+    private fun getCurrentDateRange(): Pair<String, String> {
+        val today = LocalDate.now()
+        val weekAgo = today.minusDays(7)
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        
+        return Pair(
+            weekAgo.format(formatter),
+            today.format(formatter)
+        )
     }
 }

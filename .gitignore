@@ -48,3 +48,9 @@ google-services.json
 .claude
 .vscode
 .cursor
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
