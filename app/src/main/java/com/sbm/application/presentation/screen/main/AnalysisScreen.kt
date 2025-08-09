@@ -3,6 +3,7 @@ package com.sbm.application.presentation.screen.main
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -33,6 +34,9 @@ fun AnalysisScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
+    // LazyListStateを管理してスクロール位置を保持
+    val listState = rememberLazyListState()
+    
     // 期間選択の状態管理
     var selectedPeriod by remember { mutableStateOf("1週間") }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -49,25 +53,40 @@ fun AnalysisScreen(
         )
     }
     
-    LaunchedEffect(selectedPeriod, startDate, endDate) {
+    // 期間変更時の処理を最適化
+    LaunchedEffect(selectedPeriod) {
         when (selectedPeriod) {
             "1週間" -> {
                 val today = java.time.LocalDate.now()
-                startDate = today.minusWeeks(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                endDate = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val newStartDate = today.minusWeeks(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val newEndDate = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                if (startDate != newStartDate || endDate != newEndDate) {
+                    startDate = newStartDate
+                    endDate = newEndDate
+                    viewModel.setDateRange(startDate, endDate)
+                }
             }
             "1ヶ月" -> {
                 val today = java.time.LocalDate.now()
-                startDate = today.minusMonths(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                endDate = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val newStartDate = today.minusMonths(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val newEndDate = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                if (startDate != newStartDate || endDate != newEndDate) {
+                    startDate = newStartDate
+                    endDate = newEndDate
+                    viewModel.setDateRange(startDate, endDate)
+                }
             }
             "3ヶ月" -> {
                 val today = java.time.LocalDate.now()
-                startDate = today.minusMonths(3).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                endDate = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val newStartDate = today.minusMonths(3).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val newEndDate = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                if (startDate != newStartDate || endDate != newEndDate) {
+                    startDate = newStartDate
+                    endDate = newEndDate
+                    viewModel.setDateRange(startDate, endDate)
+                }
             }
         }
-        viewModel.setDateRange(startDate, endDate)
     }
     
     LaunchedEffect(Unit) {
@@ -120,6 +139,7 @@ fun AnalysisScreen(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
@@ -174,6 +194,7 @@ fun AnalysisScreen(
                                             if (period == "カスタム") {
                                                 showDatePicker = true
                                             } else {
+                                                // 期間変更時はスクロール位置を保持
                                                 selectedPeriod = period
                                             }
                                         },
