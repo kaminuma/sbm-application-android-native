@@ -28,7 +28,10 @@ data class GenerationConfig(
     @SerializedName("maxOutputTokens")
     val maxOutputTokens: Int = 2048,
     @SerializedName("stopSequences")
-    val stopSequences: List<String> = emptyList()
+    val stopSequences: List<String> = emptyList(),
+    // Encourage strict JSON output from the model
+    @SerializedName("response_mime_type")
+    val responseMimeType: String? = null
 )
 
 data class SafetySetting(

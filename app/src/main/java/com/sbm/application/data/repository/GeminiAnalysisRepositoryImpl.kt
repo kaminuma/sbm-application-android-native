@@ -38,7 +38,8 @@ class GeminiAnalysisRepositoryImpl @Inject constructor(
                 ),
                 generationConfig = GenerationConfig(
                     temperature = 0.7f,
-                    maxOutputTokens = 2048
+                    maxOutputTokens = 2048,
+                    responseMimeType = "application/json"
                 )
             )
             
