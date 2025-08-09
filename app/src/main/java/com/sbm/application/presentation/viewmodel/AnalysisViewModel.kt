@@ -287,13 +287,17 @@ class AnalysisViewModel @Inject constructor(
     }
     
     fun setDateRange(startDate: String, endDate: String) {
-        _uiState.value = _uiState.value.copy(
-            selectedStartDate = startDate,
-            selectedEndDate = endDate
-        )
-        
-        // 日付範囲が変更されたらデータを再読み込み
-        loadAnalysisData(startDate, endDate)
+        val currentState = _uiState.value
+        // 日付が実際に変更された場合のみ更新
+        if (currentState.selectedStartDate != startDate || currentState.selectedEndDate != endDate) {
+            _uiState.value = currentState.copy(
+                selectedStartDate = startDate,
+                selectedEndDate = endDate
+            )
+            
+            // 日付範囲が変更されたらデータを再読み込み
+            loadAnalysisData(startDate, endDate)
+        }
     }
     
     private fun getCurrentDateRange(): Pair<String, String> {
