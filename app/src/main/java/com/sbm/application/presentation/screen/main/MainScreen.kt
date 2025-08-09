@@ -26,6 +26,7 @@ import com.sbm.application.presentation.viewmodel.MoodViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    onNavigateToAIConfig: () -> Unit = {},
     onLogout: () -> Unit,
     navController: NavHostController = rememberNavController()
 ) {
@@ -130,7 +131,9 @@ fun MainScreen(
                 MoodScreen(moodViewModel = moodViewModel)
             }
             composable(MainTab.Analysis.route) {
-                AnalysisScreen()
+                AnalysisScreen(
+                    onNavigateToAIConfig = onNavigateToAIConfig
+                )
             }
         }
     }

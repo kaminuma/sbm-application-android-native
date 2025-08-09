@@ -17,6 +17,7 @@ import com.sbm.application.data.remote.AuthInterceptor
 import com.sbm.application.presentation.screen.auth.LoginScreen
 import com.sbm.application.presentation.screen.auth.RegisterScreen
 import com.sbm.application.presentation.screen.main.MainScreen
+import com.sbm.application.presentation.ai.AIConfigScreen
 import com.sbm.application.presentation.viewmodel.AuthViewModel
 import androidx.compose.ui.platform.LocalContext
 import com.sbm.application.domain.usecase.AuthSessionManager
@@ -196,6 +197,9 @@ fun SBMNavigation(
         
         composable(Screen.Main.route) {
             MainScreen(
+                onNavigateToAIConfig = {
+                    navController.navigate(Screen.AIConfig.route)
+                },
                 onLogout = {
                     authViewModel.logout()
                     // ログアウト処理の完了を待ってナビゲーション
@@ -212,6 +216,14 @@ fun SBMNavigation(
                 }
             )
         }
+        
+        composable(Screen.AIConfig.route) {
+            AIConfigScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
 
@@ -219,4 +231,5 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
     object Main : Screen("main")
+    object AIConfig : Screen("ai_config")
 }

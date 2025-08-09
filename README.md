@@ -3,7 +3,6 @@
 [![Android](https://img.shields.io/badge/platform-Android-green)](https://github.com/kaminuma/sbm-application_UI/tree/main/android-native)
 [![API Level](https://img.shields.io/badge/API-26%2B-brightgreen)](https://developer.android.com/guide/topics/manifest/uses-sdk-element)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-purple)](https://kotlinlang.org/)
-[![Security](https://img.shields.io/badge/Security-A%E7%B4%9A-brightgreen)](https://developer.android.com/topic/security)
 
 SBMアプリケーションのAndroid ネイティブ版です。Kotlin + Jetpack Compose + Material 3 デザインを採用したモダンな生活記録・スケジュール管理アプリです。
 
@@ -15,6 +14,7 @@ SBMアプリケーションのAndroid ネイティブ版です。Kotlin + Jetpac
 - **ムード記録**: 5段階評価（😢〜😄）による感情記録・履歴表示
 - **データ分析**: アクティビティカテゴリ分析・ムード傾向チャート表示
 - **週表示カレンダー**: 時間軸による週間スケジュール・ムードアイコン統合
+- **✨ AI ライフガイド**: カスタマイズ可能なAI分析（期間・焦点・詳細度・口調を選択可能）
 
 ## 🛠️ 技術スタック
 
@@ -79,11 +79,26 @@ cd sbm-application_UI/android-native
 File -> Open -> android-native フォルダを選択
 ```
 
-3. **API URL 設定**
-`app/build.gradle.kts` でAPI URLを設定：
-```kotlin
-buildConfigField("String", "API_BASE_URL", "\"https://api.sbm-app.com/api/v1/\"")
+3. **環境設定**
+プロジェクトルートに `local.properties` ファイルを作成（既存の場合は追記）：
+
+```properties
+# Android SDK path
+sdk.dir=/Users/yourname/Library/Android/sdk
+
+# SBM API Configuration
+API_BASE_URL=https://api.sbm-app.com/api/v1/
+
+# AI Configuration (オプション - 開発用)
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
+
+**AI機能について**: 
+- 本番環境では API 経由で AI 機能を提供予定
+- 開発・テスト用途でのみ直接 Gemini API を使用
+- [Google AI Studio](https://makersuite.google.com/app/apikey) で API Key を取得可能
+
+**注意**: `local.properties` はgitignoreに含まれており、リポジトリにはコミットされません。
 
 ### ビルドコマンド
 
@@ -101,45 +116,25 @@ buildConfigField("String", "API_BASE_URL", "\"https://api.sbm-app.com/api/v1/\""
 ./gradlew installDebug
 ```
 
-## 🔒 セキュリティ
+## ✨ AI 分析機能
 
-### セキュリティ機能
-- **EncryptedSharedPreferences**: AES256_GCM暗号化による認証情報保存
-- **Network Security Config**: HTTPS通信強制・HTTP接続遮断
-- **JWT Token Protection**: 認証トークンの完全秘匿化
-- **Production Logging Security**: 本番環境での機密情報ログ出力防止
-- **ProGuard Code Protection**: リリースビルドでのデバッグログ削除
-- **Data Backup Security**: バックアップによるデータ漏洩防止
+### AI カスタマイズオプション
+- **分析期間**: カスタム期間、直近1週間/1ヶ月/3ヶ月
+- **比較オプション**: なし、前回同期間、先月、去年同期
+- **分析の焦点**: 気分重視、活動重視、バランス、ウェルネス重視
+- **詳細レベル**: 簡潔、標準、詳細
+- **応答スタイル**: 親しみやすい、専門的、励まし重視、カジュアル
 
-### セキュリティ設定
+### AI 機能の特徴
+- **ユーザーフレンドリー**: 技術的な設定は不要、直感的なカスタマイズ
+- **パーソナライズ**: 5つのカテゴリで自分好みの分析スタイルを選択
+- **動的プロンプト**: 設定に応じてAIの応答内容が自動調整
+- **将来対応**: API 経由での AI 提供に向けた設計
 
-#### ネットワークセキュリティ
-```xml
-<!-- network_security_config.xml -->
-<network-security-config>
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">api.sbm-app.com</domain>
-    </domain-config>
-    <base-config cleartextTrafficPermitted="false" />
-</network-security-config>
-```
-
-#### 暗号化ストレージ
-```kotlin
-private fun createEncryptedSharedPreferences(context: Context): SharedPreferences {
-    val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-    
-    return EncryptedSharedPreferences.create(
-        context,
-        "encrypted_auth_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
-}
-```
+### 使い方
+1. 分析画面の「✨ AI ライフガイド 🤖」の歯車アイコンをタップ
+2. 5つのカテゴリで好みの設定を選択（自動保存）
+3. 分析画面でAI分析ボタンを押してカスタマイズされた洞察を取得
 
 ## 🎨 UI/UX 特徴
 
@@ -218,22 +213,6 @@ suspend fun <T> retryWithBackoff(
 - **Network**: OkHttpによる接続プール
 - **Memory**: ViewModel ライフサイクル管理
 
-## 🚀 Google Play Store配布準備
-
-### 配布準備完了項目
-- **セキュリティ監査**: 全ての重要な脆弱性を修正済み
-- **Google Play ポリシー**: 配布ガイドライン完全準拠
-- **プライバシーポリシー**: 実装済み
-- **データ保護**: GDPR・個人情報保護法対応
-- **コード署名**: リリースビルド準備完了
-- **APIレベル**: Android 8.0 (API 26) 以上対応
-
-### セキュリティ監査スコア
-- **総合評価**: A級（配布準備完了）
-- **認証セキュリティ**: A級
-- **ネットワークセキュリティ**: A級
-- **データ保護**: A級
-- **コード保護**: A級
 
 ## 🐛 トラブルシューティング
 
@@ -258,15 +237,15 @@ adb logcat | grep "SBM"
 ## 🔮 今後の予定
 
 ### 短期計画
+- AI 機能のAPI経由移行（プロキシAPI実装）
+- AI 設定のサーバー側永続化
 - Room データベース統合（オフライン対応）
 - プルトゥリフレッシュ機能
-- ページネーション機能
-- UI テスト自動化
 
 ### 長期計画
+- AI 分析履歴機能
+- 複数AI プロバイダー対応（Gemini, Claude, GPT）
 - ウィジェット機能
-- ウェアラブル対応
-- バックアップ・同期機能
 - プッシュ通知機能
 
 ## 🤝 コントリビューション

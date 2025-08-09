@@ -23,10 +23,12 @@ import com.sbm.application.presentation.viewmodel.AnalysisViewModel
 import com.sbm.application.presentation.components.CategoryChart
 import com.sbm.application.presentation.components.MoodTrendChart
 import com.sbm.application.presentation.components.StatsOverview
+import com.sbm.application.presentation.components.AIAnalysisSection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(
+    onNavigateToAIConfig: () -> Unit = {},
     viewModel: AnalysisViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -65,12 +67,15 @@ fun AnalysisScreen(
                 endDate = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             }
         }
-        viewModel.loadAnalysisData(startDate, endDate)
+        viewModel.setDateRange(startDate, endDate)
     }
     
     LaunchedEffect(Unit) {
         // デフォルトで1週間のデータを読み込み
-        viewModel.loadAnalysisData(startDate, endDate)
+        val today = java.time.LocalDate.now()
+        val weekAgo = today.minusWeeks(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val todayStr = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        viewModel.setDateRange(weekAgo, todayStr)
     }
     
     Box(modifier = Modifier.fillMaxSize()) {
@@ -126,6 +131,18 @@ fun AnalysisScreen(
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                
+                // AI分析セクション - 一番上に配置
+                item {
+                    AIAnalysisSection(
+                        canGenerate = uiState.canGenerateAI,
+                        isLoading = uiState.isAiLoading,
+                        insight = uiState.aiInsight,
+                        error = uiState.aiError,
+                        onGenerateClick = { viewModel.generateAIInsight() },
+                        onConfigureClick = onNavigateToAIConfig
                     )
                 }
                 

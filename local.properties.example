@@ -1,0 +1,15 @@
+## This file must *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
+#
+# Copy this file to local.properties and fill in your actual values.
+
+# Android SDK path (update with your actual path)
+sdk.dir=/Users/yourname/Library/Android/sdk
+
+# SBM API Configuration
+API_BASE_URL=https://api.sbm-app.com/api/v1/
+
+# AI Configuration (オプション - 開発・テスト用)
+# 本番環境では API 経由で AI 機能を提供予定
+# Google AI Studio (https://makersuite.google.com/app/apikey) でAPI Keyを取得
+GEMINI_API_KEY=your_gemini_api_key_here
