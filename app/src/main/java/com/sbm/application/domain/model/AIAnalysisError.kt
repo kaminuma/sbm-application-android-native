@@ -1,9 +1,7 @@
 package com.sbm.application.domain.model
 
 sealed class AIAnalysisError : Exception() {
-    object NetworkError : AIAnalysisError() {
-        override val message: String = "ネットワーク接続を確認してください"
-    }
+    // NetworkErrorはdata classに変更（詳細メッセージ対応のため）
     
     object ApiKeyNotSet : AIAnalysisError() {
         override val message: String = "AI設定でAPIキーを設定してください"
@@ -27,12 +25,16 @@ sealed class AIAnalysisError : Exception() {
     
     data class UnknownError(override val message: String) : AIAnalysisError()
     
+    data class NetworkError(override val message: String) : AIAnalysisError()
+    
+    data class ApiRequestError(override val message: String) : AIAnalysisError()
+    
     companion object {
         fun fromThrowable(throwable: Throwable): AIAnalysisError {
             return when {
                 throwable is java.net.UnknownHostException || 
                 throwable is java.net.SocketTimeoutException ||
-                throwable is java.net.ConnectException -> NetworkError
+                throwable is java.net.ConnectException -> NetworkError("ネットワーク接続を確認してください")
                 
                 throwable.message?.contains("API_KEY_INVALID") == true ||
                 throwable.message?.contains("401") == true -> InvalidApiKey

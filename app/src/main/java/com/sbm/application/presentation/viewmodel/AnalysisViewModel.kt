@@ -247,9 +247,11 @@ class AnalysisViewModel @Inject constructor(
                 // 現在のAI設定を取得
                 val aiConfig = aiConfigRepository.getConfig()
                 
+                // getCurrentDateRange()の重複呼び出しを最適化
+                val dateRange = getCurrentDateRange()
                 val result = generateAIInsightUseCase.execute(
-                    startDate = currentState.selectedStartDate.ifEmpty { getCurrentDateRange().first },
-                    endDate = currentState.selectedEndDate.ifEmpty { getCurrentDateRange().second },
+                    startDate = currentState.selectedStartDate.ifEmpty { dateRange.first },
+                    endDate = currentState.selectedEndDate.ifEmpty { dateRange.second },
                     activities = currentState.activities,
                     moodRecords = currentState.moodRecords,
                     config = aiConfig

@@ -77,11 +77,7 @@ object AIModule {
         return AIPromptGenerator()
     }
 
-    @Provides
-    @Singleton
-    fun provideAIConfigRepository(): AIConfigRepository {
-        return AIConfigRepositoryImpl()
-    }
+    // AIConfigRepositoryの定義はRepositoryModuleに移動済み
 
     @Provides
     @Singleton

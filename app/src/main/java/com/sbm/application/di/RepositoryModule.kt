@@ -3,9 +3,11 @@ package com.sbm.application.di
 import com.sbm.application.data.repository.AuthRepositoryImpl
 import com.sbm.application.data.repository.ActivityRepositoryImpl
 import com.sbm.application.data.repository.MoodRepositoryImpl
+import com.sbm.application.data.repository.AIConfigRepositoryImpl
 import com.sbm.application.domain.repository.AuthRepository
 import com.sbm.application.domain.repository.ActivityRepository
 import com.sbm.application.domain.repository.MoodRepository
+import com.sbm.application.domain.repository.AIConfigRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,4 +35,10 @@ abstract class RepositoryModule {
     abstract fun bindMoodRepository(
         moodRepositoryImpl: MoodRepositoryImpl
     ): MoodRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindAIConfigRepository(
+        aiConfigRepositoryImpl: AIConfigRepositoryImpl
+    ): AIConfigRepository
 }

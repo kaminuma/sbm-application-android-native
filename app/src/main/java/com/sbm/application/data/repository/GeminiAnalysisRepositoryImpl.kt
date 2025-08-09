@@ -70,17 +70,16 @@ class GeminiAnalysisRepositoryImpl @Inject constructor(
             Result.success(responseData)
             
         } catch (e: retrofit2.HttpException) {
-            val errorType = when (e.code()) {
-                401 -> "InvalidApiKey"
-                429 -> "RateLimitExceeded"
-                else -> "HttpError_${e.code()}"
-            }
-            
-            when (e.code()) {
-                401 -> Result.failure(AIAnalysisError.InvalidApiKey)
-                429 -> Result.failure(AIAnalysisError.RateLimitExceeded)
-                else -> Result.failure(AIAnalysisError.fromThrowable(e))
-            }
+            handleHttpException(e)
+        } catch (e: java.net.UnknownHostException) {
+            // ネットワーク接続なし
+            Result.failure(AIAnalysisError.NetworkError("インターネット接続を確認してください"))
+        } catch (e: java.net.SocketTimeoutException) {
+            // タイムアウト
+            Result.failure(AIAnalysisError.NetworkError("通信タイムアウトが発生しました。しばらく待ってから再試行してください"))
+        } catch (e: java.io.IOException) {
+            // その他のネットワークエラー
+            Result.failure(AIAnalysisError.NetworkError("ネットワークエラーが発生しました: ${e.message}"))
         } catch (e: Exception) {
             Result.failure(AIAnalysisError.fromThrowable(e))
         }
@@ -102,13 +101,8 @@ class GeminiAnalysisRepositoryImpl @Inject constructor(
     
     private fun parseGeminiResponse(jsonString: String, startDate: String, endDate: String): AIInsight {
         return try {
-            // Remove any markdown formatting if present - more robust cleaning
-            val cleanJson = jsonString
-                .removePrefix("```json")
-                .removeSuffix("```")
-                .replace(Regex("^```json\n?"), "") // Remove ```json at start
-                .replace(Regex("\n?```$"), "")     // Remove ``` at end
-                .trim()
+            // Robust JSON extraction from markdown code blocks
+            val cleanJson = extractJsonFromMarkdown(jsonString)
             
             val dto = gson.fromJson(cleanJson, GeminiInsightDto::class.java)
             
@@ -129,6 +123,56 @@ class GeminiAnalysisRepositoryImpl @Inject constructor(
             throw AIAnalysisError.ApiResponseError
         } catch (e: Exception) {
             throw AIAnalysisError.UnknownError("AI応答の解析に失敗: ${e.message}")
+        }
+    }
+    
+    /**
+     * Markdownコードブロックから堅牢にJSONを抽出する
+     * 複数のregex置換の代わりに、一度の解析でJSONを特定
+     */
+    private fun extractJsonFromMarkdown(text: String): String {
+        val trimmedText = text.trim()
+        
+        // Case 1: ```json ... ``` パターン
+        val jsonBlockPattern = """```(?:json)?\s*\n?(.*?)\n?```"""
+        val jsonBlockRegex = Regex(jsonBlockPattern, RegexOption.DOT_MATCHES_ALL)
+        val jsonMatch = jsonBlockRegex.find(trimmedText)
+        if (jsonMatch != null) {
+            return jsonMatch.groupValues[1].trim()
+        }
+        
+        // Case 2: { ... } の単純JSONパターン
+        val jsonStartIndex = trimmedText.indexOfFirst { it == '{' }
+        val jsonEndIndex = trimmedText.indexOfLast { it == '}' }
+        
+        if (jsonStartIndex != -1 && jsonEndIndex != -1 && jsonStartIndex <= jsonEndIndex) {
+            return trimmedText.substring(jsonStartIndex, jsonEndIndex + 1).trim()
+        }
+        
+        // Case 3: そのまま返す（フォールバック）
+        return trimmedText
+    }
+    
+    /**
+     * HTTP例外を適切なAIAnalysisErrorに変換する
+     */
+    private fun handleHttpException(e: retrofit2.HttpException): Result<AIInsightResponse> {
+        return when (e.code()) {
+            401 -> Result.failure(AIAnalysisError.InvalidApiKey)
+            429 -> Result.failure(AIAnalysisError.RateLimitExceeded) 
+            400 -> {
+                // リクエスト形式エラー（データ不足の可能性）
+                val errorMessage = if (e.message()?.contains("insufficient data", ignoreCase = true) == true) {
+                    "分析に必要なデータが不足しています。もう少しデータを追加してから再試行してください"
+                } else {
+                    "リクエスト形式に問題があります"
+                }
+                Result.failure(AIAnalysisError.ApiRequestError(errorMessage))
+            }
+            403 -> Result.failure(AIAnalysisError.ApiRequestError("API利用権限がありません"))
+            404 -> Result.failure(AIAnalysisError.ApiRequestError("APIエンドポイントが見つかりません"))
+            500, 502, 503 -> Result.failure(AIAnalysisError.NetworkError("サーバーに一時的な問題が発生しています。しばらく待ってから再試行してください"))
+            else -> Result.failure(AIAnalysisError.fromThrowable(e))
         }
     }
 }

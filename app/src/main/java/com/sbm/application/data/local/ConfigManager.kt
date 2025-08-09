@@ -7,6 +7,10 @@ import androidx.security.crypto.MasterKeys
 import com.sbm.application.domain.model.AIConfig
 import com.sbm.application.domain.model.AIMode
 import com.sbm.application.domain.model.MigrationState
+import com.sbm.application.domain.model.AIAnalysisConfig
+import com.sbm.application.domain.model.AnalysisFocus
+import com.sbm.application.domain.model.DetailLevel
+import com.sbm.application.domain.model.ResponseStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -136,6 +140,43 @@ class ConfigManager @Inject constructor(
         }
     }
     
+    // AI分析設定の永続化機能
+    fun getAIAnalysisConfig(): AIAnalysisConfig {
+        val focusString = encryptedPrefs.getString(KEY_ANALYSIS_FOCUS, null)
+        val detailString = encryptedPrefs.getString(KEY_DETAIL_LEVEL, null)
+        val styleString = encryptedPrefs.getString(KEY_RESPONSE_STYLE, null)
+        
+        return AIAnalysisConfig(
+            analysisFocus = focusString?.let { 
+                try { AnalysisFocus.valueOf(it) } catch (e: IllegalArgumentException) { null }
+            } ?: AnalysisFocus.BALANCED,
+            detailLevel = detailString?.let { 
+                try { DetailLevel.valueOf(it) } catch (e: IllegalArgumentException) { null }
+            } ?: DetailLevel.STANDARD,
+            responseStyle = styleString?.let { 
+                try { ResponseStyle.valueOf(it) } catch (e: IllegalArgumentException) { null }
+            } ?: ResponseStyle.FRIENDLY
+        )
+    }
+    
+    fun saveAIAnalysisConfig(config: AIAnalysisConfig) {
+        with(encryptedPrefs.edit()) {
+            putString(KEY_ANALYSIS_FOCUS, config.analysisFocus.name)
+            putString(KEY_DETAIL_LEVEL, config.detailLevel.name)
+            putString(KEY_RESPONSE_STYLE, config.responseStyle.name)
+            apply()
+        }
+    }
+    
+    fun clearAIAnalysisConfig() {
+        with(encryptedPrefs.edit()) {
+            remove(KEY_ANALYSIS_FOCUS)
+            remove(KEY_DETAIL_LEVEL)
+            remove(KEY_RESPONSE_STYLE)
+            apply()
+        }
+    }
+    
     companion object {
         private const val KEY_AI_MODE = "ai_mode"
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
@@ -143,5 +184,10 @@ class ConfigManager @Inject constructor(
         private const val KEY_CUSTOM_API_TOKEN = "custom_api_token"
         private const val KEY_CONFIG_VERSION = "config_version"
         private const val KEY_MIGRATION_STATE = "migration_state"
+        
+        // AI分析設定用のキー
+        private const val KEY_ANALYSIS_FOCUS = "analysis_focus"
+        private const val KEY_DETAIL_LEVEL = "detail_level"
+        private const val KEY_RESPONSE_STYLE = "response_style"
     }
 }
