@@ -8,9 +8,9 @@ class AIPromptGenerator {
         request: AIAnalysisRequest,
         config: AIAnalysisConfig = AIAnalysisConfig()
     ): String {
-        val periodSection = generatePeriodSection(request, config.analysisPeriod)
-        val comparisonSection = generateComparisonSection(config.comparisonOption)
         val focusSection = generateFocusSection(config.analysisFocus)
+        // TODO: 将来的に比較分析機能を追加予定
+        // val comparisonSection = generateComparisonSection(config.comparisonOption)
         val styleSection = generateStyleSection(config.responseStyle)
         val detailSection = generateDetailSection(config.detailLevel)
         
@@ -21,11 +21,12 @@ class AIPromptGenerator {
         ${styleSection}
         
         ## 📊 分析設定
-        - 期間: ${config.analysisPeriod.displayName} (${request.startDate} ～ ${request.endDate})
+        - 期間: 直近1週間（固定） (${request.startDate} ～ ${request.endDate})
         - 焦点: ${config.analysisFocus.emoji} ${config.analysisFocus.displayName}
         - 詳細度: ${config.detailLevel.displayName}
         - 口調: ${config.responseStyle.emoji} ${config.responseStyle.displayName}
-        ${comparisonSection}
+        
+        // TODO: 将来的に比較分析機能を追加予定
 
         ## 📈 データ概要
         ${if (request.moodRecords.isNotEmpty()) "気分記録: $moodSummary" else "気分記録: データなし"}
@@ -53,23 +54,10 @@ class AIPromptGenerator {
         """.trimIndent()
     }
     
-    private fun generatePeriodSection(request: AIAnalysisRequest, period: AnalysisPeriod): String {
-        return when (period) {
-            AnalysisPeriod.CUSTOM -> "指定された期間"
-            AnalysisPeriod.LAST_7_DAYS -> "直近1週間"
-            AnalysisPeriod.LAST_30_DAYS -> "直近1ヶ月"
-            AnalysisPeriod.LAST_90_DAYS -> "直近3ヶ月"
-        }
-    }
+    // generatePeriodSection は削除（期間固定のため不要）
     
-    private fun generateComparisonSection(comparison: ComparisonOption): String {
-        return when (comparison) {
-            ComparisonOption.NONE -> ""
-            ComparisonOption.PREVIOUS_PERIOD -> "- 比較: 前回同期間との変化を重視して分析"
-            ComparisonOption.LAST_MONTH -> "- 比較: 先月との変化を重視して分析"
-            ComparisonOption.LAST_YEAR -> "- 比較: 去年同期との変化を重視して分析"
-        }
-    }
+    // TODO: 将来的に比較分析機能を追加時に実装予定
+    // private fun generateComparisonSection(comparison: ComparisonOption): String { ... }
     
     private fun generateFocusSection(focus: AnalysisFocus): String {
         return when (focus) {
@@ -207,8 +195,8 @@ class AIPromptGenerator {
     private fun formatMoodRecords(moodRecords: List<MoodRecord>): String {
         if (moodRecords.isEmpty()) return ""
         
-        val recentMoods = moodRecords.takeLast(7) // 最新7件まで
-        val formattedMoods = recentMoods.joinToString(", ") { mood ->
+        val weekMoods = moodRecords // 過去1週間分の気分記録を全て使用（期間フィルタ済み）
+        val formattedMoods = weekMoods.joinToString(", ") { mood ->
             "${mood.date}: ${mood.mood}点${if (mood.note.isNotBlank()) " (${mood.note.take(20)})" else ""}"
         }
         
@@ -218,15 +206,40 @@ class AIPromptGenerator {
     private fun formatActivities(activities: List<Activity>): String {
         if (activities.isEmpty()) return ""
         
+        // 過去1週間分の活動を全て詳細表示（期間フィルタ済みのデータを全て使用）
+        val weekActivities = activities
+        val formattedActivities = weekActivities.joinToString("\n") { activity ->
+            val timeRange = "${activity.start}-${activity.end}"
+            val categoryInfo = if (activity.categorySub.isNullOrBlank()) {
+                activity.category
+            } else {
+                "${activity.category}(${activity.categorySub})"
+            }
+            val contentInfo = if (activity.contents.isNullOrBlank()) {
+                ""
+            } else {
+                " - ${activity.contents.take(30)}" // 内容を30文字まで
+            }
+            
+            "${activity.date} ${timeRange}: ${activity.title} [$categoryInfo]$contentInfo"
+        }
+        
+        // カテゴリ別サマリーも追加
         val categoryGroups = activities.groupBy { it.category }
             .entries
             .sortedByDescending { it.value.size }
-            .take(5) // 上位5カテゴリ
+            .take(3) // 上位3カテゴリ
         
-        val formattedCategories = categoryGroups.joinToString("\n") { (category, acts) ->
-            "- $category: ${acts.size}件"
+        val categorySummary = categoryGroups.joinToString(", ") { (category, acts) ->
+            "$category: ${acts.size}件"
         }
         
-        return "### 活動記録詳細\n$formattedCategories\n"
+        return """
+### 活動記録詳細
+$formattedActivities
+
+### カテゴリ別概要
+$categorySummary
+"""
     }
 }

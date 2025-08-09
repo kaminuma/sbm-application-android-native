@@ -1,26 +1,26 @@
 package com.sbm.application.domain.model
 
 data class AIAnalysisConfig(
-    val analysisPeriod: AnalysisPeriod = AnalysisPeriod.CUSTOM,
-    val comparisonOption: ComparisonOption = ComparisonOption.NONE,
     val analysisFocus: AnalysisFocus = AnalysisFocus.BALANCED,
     val detailLevel: DetailLevel = DetailLevel.STANDARD,
     val responseStyle: ResponseStyle = ResponseStyle.FRIENDLY
+    // 分析期間は直近1週間に固定（APIの安定性とユーザビリティを重視）
+    // TODO: 将来的に比較分析機能を追加予定
+    // val comparisonOption: ComparisonOption = ComparisonOption.NONE
 )
 
-enum class AnalysisPeriod(val displayName: String, val description: String) {
-    CUSTOM("カスタム期間", "選択した期間で分析"),
-    LAST_7_DAYS("直近1週間", "過去7日間のデータを分析"),
-    LAST_30_DAYS("直近1ヶ月", "過去30日間のデータを分析"),
-    LAST_90_DAYS("直近3ヶ月", "過去90日間のデータを分析")
-}
+// 分析期間は直近1週間に固定（コメントアウト - 将来的に選択可能にする場合は復活予定）
+// enum class AnalysisPeriod(val displayName: String, val description: String) {
+//     LAST_7_DAYS("直近1週間", "過去7日間のデータを分析")
+// }
 
-enum class ComparisonOption(val displayName: String, val description: String) {
-    NONE("比較なし", "単独期間のみ分析"),
-    PREVIOUS_PERIOD("前回同期間", "前回の同じ期間と比較"),
-    LAST_MONTH("先月", "先月の同期間と比較"),
-    LAST_YEAR("去年同期", "去年の同期間と比較")
-}
+// TODO: 将来的に比較分析機能を追加予定
+// enum class ComparisonOption(val displayName: String, val description: String) {
+//     NONE("比較なし", "単独期間のみ分析"),
+//     PREVIOUS_PERIOD("前回同期間", "前回の同じ期間と比較"),
+//     LAST_MONTH("先月", "先月の同期間と比較"),
+//     LAST_YEAR("去年同期", "去年の同期間と比較")
+// }
 
 enum class AnalysisFocus(val displayName: String, val description: String, val emoji: String) {
     MOOD_FOCUSED("気分重視", "気分の変化や傾向を詳しく分析", "😊"),
@@ -50,9 +50,9 @@ enum class AIProvider(val displayName: String, val description: String) {
     CUSTOM_API("カスタムAPI", "独自のAI API")
 }
 
-// プロンプト生成のためのヘルパー
-data class PromptContext(
-    val config: AIAnalysisConfig,
-    val request: AIAnalysisRequest,
-    val comparisonData: AIAnalysisRequest? = null // 比較データ（将来実装）
-)
+// TODO: 将来的に比較分析機能を追加時に実装予定
+// data class PromptContext(
+//     val config: AIAnalysisConfig,
+//     val request: AIAnalysisRequest,
+//     val comparisonData: AIAnalysisRequest? = null
+// )

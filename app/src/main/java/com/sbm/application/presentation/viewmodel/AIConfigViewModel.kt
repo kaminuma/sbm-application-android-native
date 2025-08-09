@@ -30,23 +30,10 @@ class AIConfigViewModel @Inject constructor(
         loadConfig()
     }
     
-    fun updateAnalysisPeriod(period: AnalysisPeriod) {
-        val currentConfig = _uiState.value.config
-        _uiState.value = _uiState.value.copy(
-            config = currentConfig.copy(analysisPeriod = period),
-            isSaved = false
-        )
-        autoSave()
-    }
+    // updateAnalysisPeriod は削除（期間固定のため不要）
     
-    fun updateComparisonOption(option: ComparisonOption) {
-        val currentConfig = _uiState.value.config
-        _uiState.value = _uiState.value.copy(
-            config = currentConfig.copy(comparisonOption = option),
-            isSaved = false
-        )
-        autoSave()
-    }
+    // TODO: 将来的に比較分析機能を追加時に実装予定
+    // fun updateComparisonOption(option: ComparisonOption) { ... }
     
     fun updateAnalysisFocus(focus: AnalysisFocus) {
         val currentConfig = _uiState.value.config
@@ -132,12 +119,6 @@ class AIConfigViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
     
-    // 現在の設定に基づいてプロンプト生成用のコンテキストを作成
-    fun createPromptContext(request: AIAnalysisRequest): PromptContext {
-        return PromptContext(
-            config = _uiState.value.config,
-            request = request,
-            comparisonData = null // TODO: 将来実装
-        )
-    }
+    // TODO: 将来的に比較分析機能を追加時に実装予定
+    // fun createPromptContext(request: AIAnalysisRequest): PromptContext { ... }
 }

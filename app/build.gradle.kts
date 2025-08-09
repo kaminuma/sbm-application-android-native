@@ -40,13 +40,9 @@ android {
         // AI Configuration
         buildConfigField("String", "GEMINI_API_KEY", "\"${getLocalProperty("GEMINI_API_KEY", "")}\"")
         
-        // TODO: プロキシAPI移行時に使用予定（現在未使用）
-        buildConfigField("String", "CUSTOM_API_URL", "\"${getLocalProperty("CUSTOM_API_URL", "")}\"")
-        buildConfigField("String", "CUSTOM_API_TOKEN", "\"${getLocalProperty("CUSTOM_API_TOKEN", "")}\"")
-        
-        // TODO: AI機能のフィーチャーフラグ・デバッグ用（将来の拡張用）
-        buildConfigField("boolean", "AI_FEATURE_ENABLED", "true")
-        buildConfigField("boolean", "DEBUG_AI_PROMPTS", "false")
+        // TODO: プロキシAPI移行時に必要に応じて追加予定
+        // buildConfigField("String", "CUSTOM_API_URL", "...")
+        // buildConfigField("String", "CUSTOM_API_TOKEN", "...")
     }
 
     buildTypes {

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.sbm.application.domain.model.*
 import com.sbm.application.presentation.viewmodel.AIConfigViewModel
@@ -63,26 +64,51 @@ fun AIConfigScreen(
             item {
                 ConfigSection(
                     title = "📅 分析期間",
-                    description = "どの期間のデータを分析しますか？"
+                    description = "直近1週間のデータを分析します"
                 ) {
-                    AnalysisPeriodSelector(
-                        selected = config.analysisPeriod,
-                        onSelectionChanged = viewModel::updateAnalysisPeriod
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📊",
+                                fontSize = 20.sp,
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "直近1週間",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "過去7日間のデータを分析",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            item {
-                ConfigSection(
-                    title = "📊 比較オプション",
-                    description = "他の期間と比較して分析しますか？"
-                ) {
-                    ComparisonOptionSelector(
-                        selected = config.comparisonOption,
-                        onSelectionChanged = viewModel::updateComparisonOption
-                    )
-                }
-            }
+            // TODO: 将来的に比較分析機能を追加予定
+            // item {
+            //     ConfigSection(
+            //         title = "📊 比較オプション", 
+            //         description = "他の期間と比較して分析しますか？"
+            //     ) {
+            //         ComparisonOptionSelector(...)
+            //     }
+            // }
 
             item {
                 ConfigSection(
@@ -156,83 +182,11 @@ private fun ConfigSection(
     }
 }
 
-@Composable
-private fun AnalysisPeriodSelector(
-    selected: AnalysisPeriod,
-    onSelectionChanged: (AnalysisPeriod) -> Unit
-) {
-    Column(modifier = Modifier.selectableGroup()) {
-        AnalysisPeriod.entries.forEach { period ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectable(
-                        selected = selected == period,
-                        onClick = { onSelectionChanged(period) },
-                        role = Role.RadioButton
-                    )
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(
-                    selected = selected == period,
-                    onClick = null
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = period.displayName,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = period.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
+// AnalysisPeriodSelector は削除（期間固定のため不要）
 
-@Composable
-private fun ComparisonOptionSelector(
-    selected: ComparisonOption,
-    onSelectionChanged: (ComparisonOption) -> Unit
-) {
-    Column(modifier = Modifier.selectableGroup()) {
-        ComparisonOption.entries.forEach { option ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectable(
-                        selected = selected == option,
-                        onClick = { onSelectionChanged(option) },
-                        role = Role.RadioButton
-                    )
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RadioButton(
-                    selected = selected == option,
-                    onClick = null
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = option.displayName,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = option.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
+// TODO: 将来的に比較分析機能を追加時に実装予定
+// @Composable
+// private fun ComparisonOptionSelector(...) { ... }
 
 @Composable
 private fun AnalysisFocusSelector(
