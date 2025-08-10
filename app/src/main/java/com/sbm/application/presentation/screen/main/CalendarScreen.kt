@@ -5,8 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -474,9 +478,6 @@ fun CalendarDay(
     }
 }
 
-/**
- * 週表示カレンダーコンポーネント
- */
 @Composable
 fun WeeklyCalendarView(
     weekStart: LocalDate,
@@ -485,435 +486,394 @@ fun WeeklyCalendarView(
     onMoodClick: (LocalDate, MoodRecord?) -> Unit,
     onActivityClick: (Activity) -> Unit,
     onTimeSlotClick: (LocalDate, Int) -> Unit,
-    onDateHeaderClick: (LocalDate) -> Unit, // 日付ヘッダークリック用コールバック
+    onDateHeaderClick: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 30分間隔で6:00-23:30まで表示
-    val timeSlots = mutableListOf<Pair<Int, Int>>()
-    for (hour in 6..23) {
-        timeSlots.add(Pair(hour, 0))  // xx:00
-        timeSlots.add(Pair(hour, 30)) // xx:30
-    }
-    val weekDays = (0..6).map { weekStart.plusDays(it.toLong()) }
+    val startHour = 0
+    val endHour = 24 // 24時まで（23:59分まで対応）
+    val totalHours = endHour - startHour
+    val minuteHeight = 1.dp // 1分の高さ
+    val hourHeight = minuteHeight * 60 // 1時間 = 60dp
+    val totalGridHeight = hourHeight * totalHours
     
-    // 日付別のデータを整理
+    val weekDays = (0..6).map { weekStart.plusDays(it.toLong()) }
     val activitiesByDate = activities.groupBy { it.date }
     val moodsByDate = moods.groupBy { it.date }
     
-    LazyColumn(
-        modifier = modifier.fillMaxSize()
-    ) {
+    Column(modifier = modifier.fillMaxSize()) {
         // ヘッダー行（曜日と日付）
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth()
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(48.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // 時間列のヘッダー
+                Text(
+                    text = "時間",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            weekDays.forEach { date ->
                 Box(
                     modifier = Modifier
-                        .width(60.dp)
-                        .height(48.dp),
+                        .weight(1f)
+                        .height(48.dp)
+                        .clickable { onDateHeaderClick(date) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "時間",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                
-                // 各日のヘッダー
-                weekDays.forEach { date ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .clickable {
-                                onDateHeaderClick(date)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = date.dayOfWeek.getDisplayName(
-                                    TextStyle.SHORT,
-                                    Locale.JAPANESE
-                                ),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "${date.monthValue}/${date.dayOfMonth}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.JAPANESE),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${date.monthValue}/${date.dayOfMonth}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             }
         }
         
         // ムード行
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            ) {
-                // ムード列のラベル
-                Box(
-                    modifier = Modifier
-                        .width(60.dp)
-                        .height(48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "気分",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                
-                // 各日のムード
-                weekDays.forEach { date ->
-                    val dateString = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                    val dayMood = moodsByDate[dateString]?.firstOrNull()
-                    
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .clickable {
-                                onMoodClick(date, dayMood)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (dayMood != null) {
-                            val moodOption = MoodOptions.moodScale.find { it.value == dayMood.mood }
-                            Text(
-                                text = moodOption?.emoji ?: "😐",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        } else {
-                            // 空の場合はプラスアイコン表示
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "ムード追加",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        
-        // 時間軸とアクティビティ（改良版：連続ブロック表示・重複対応）
-        items(timeSlots) { timeSlot ->
-            val (hour, minute) = timeSlot
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-            ) {
-                // 時間ラベル
-                Box(
-                    modifier = Modifier
-                        .width(60.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surface),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = String.format("%02d:%02d", hour, minute),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                // 各日の時間スロット
-                weekDays.forEach { date ->
-                    val dateString = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                    val dayActivities = activitiesByDate[dateString] ?: emptyList()
-                    
-                    // この時間スロットに重複するすべてのアクティビティを取得
-                    val currentSlotMinutes = hour * 60 + minute
-                    val overlappingActivities = dayActivities.filter { activity ->
-                        val startParts = activity.start.split(":")
-                        val endParts = activity.end.split(":")
-                        
-                        val startHour = startParts.getOrNull(0)?.toIntOrNull() ?: -1
-                        val startMinute = startParts.getOrNull(1)?.toIntOrNull() ?: 0
-                        val endHour = endParts.getOrNull(0)?.toIntOrNull() ?: -1
-                        val endMinute = endParts.getOrNull(1)?.toIntOrNull() ?: 0
-                        
-                        val activityStartMinutes = startHour * 60 + startMinute
-                        val activityEndMinutes = endHour * 60 + endMinute
-                        
-                        // 現在のスロットがアクティビティの時間範囲内にある場合
-                        currentSlotMinutes >= activityStartMinutes && currentSlotMinutes < activityEndMinutes
-                    }
-                    
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .border(
-                                width = 0.5.dp,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            )
-                            .clickable {
-                                if (overlappingActivities.isNotEmpty()) {
-                                    onActivityClick(overlappingActivities.first())
-                                } else {
-                                    onTimeSlotClick(date, hour)
-                                }
-                            }
-                            .padding(2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        when {
-                            overlappingActivities.isEmpty() -> {
-                                // 空のスロット - 何も表示しない
-                            }
-                            overlappingActivities.size == 1 -> {
-                                // 単一のアクティビティ
-                                val activity = overlappingActivities.first()
-                                val isStartSlot = isActivityStartSlot(activity, hour, minute)
-                                
-                                if (isStartSlot) {
-                                    // 開始スロットの場合、従来のフルブロック表示
-                                    ActivityBlock(
-                                        activity = activity,
-                                        showAsFullBlock = true
-                                    )
-                                } else {
-                                    // 継続スロットの場合、統合された背景色表示
-                                    UnifiedContinuationBlock(activity = activity)
-                                }
-                            }
-                            else -> {
-                                // 複数のアクティビティが重複（並列表示）
-                                Row(
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    overlappingActivities.forEachIndexed { index, activity ->
-                                        val isStartSlot = isActivityStartSlot(activity, hour, minute)
-                                        
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight()
-                                                .padding(horizontal = 1.dp)
-                                        ) {
-                                            if (isStartSlot) {
-                                                ActivityBlock(
-                                                    activity = activity,
-                                                    showAsFullBlock = false // 重複時は簡略表示
-                                                )
-                                            } else {
-                                                UnifiedContinuationBlock(activity = activity)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * アクティビティが指定した時間スロットで開始するかどうかを判定
- */
-private fun isActivityStartSlot(activity: Activity, hour: Int, minute: Int): Boolean {
-    val startParts = activity.start.split(":")
-    val startHour = startParts.getOrNull(0)?.toIntOrNull() ?: -1
-    val startMinute = startParts.getOrNull(1)?.toIntOrNull() ?: 0
-    return startHour == hour && startMinute == minute
-}
-
-/**
- * アクティビティの持続時間（30分単位のスロット数）を計算
- */
-private fun calculateActivityDurationSlots(activity: Activity): Float {
-    val startParts = activity.start.split(":")
-    val endParts = activity.end.split(":")
-    
-    val startHour = startParts.getOrNull(0)?.toIntOrNull() ?: 0
-    val startMinute = startParts.getOrNull(1)?.toIntOrNull() ?: 0
-    val endHour = endParts.getOrNull(0)?.toIntOrNull() ?: 0
-    val endMinute = endParts.getOrNull(1)?.toIntOrNull() ?: 0
-    
-    val startTimeMinutes = startHour * 60 + startMinute
-    val endTimeMinutes = endHour * 60 + endMinute
-    val durationMinutes = endTimeMinutes - startTimeMinutes
-    
-    return (durationMinutes / 30f).coerceAtLeast(1f)
-}
-
-/**
- * 改善されたアクティビティブロック表示コンポーネント
- * Web版風の統一感のある表示を実現
- */
-@Composable
-private fun ActivityBlock(
-    activity: Activity,
-    showAsFullBlock: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val categoryColors = CategoryColors.getColorScheme(activity.category)
-    
-    Card(
-        modifier = modifier.fillMaxSize(),
-        colors = CardDefaults.cardColors(
-            containerColor = categoryColors.backgroundColor
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        shape = if (showAsFullBlock) RoundedCornerShape(8.dp) else RoundedCornerShape(6.dp)
-    ) {
-        Box(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(if (showAsFullBlock) 6.dp else 4.dp),
-            contentAlignment = if (showAsFullBlock) Alignment.TopCenter else Alignment.Center
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = if (showAsFullBlock) Arrangement.Top else Arrangement.Center
+            Box(
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(48.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // タイトル
                 Text(
-                    text = if (showAsFullBlock) {
-                        activity.title
-                    } else {
-                        if (activity.title.length > 4) activity.title.take(4) + "..." else activity.title
-                    },
-                    style = if (showAsFullBlock) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
-                    color = categoryColors.textColor,
-                    maxLines = if (showAsFullBlock) 2 else 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    text = "気分",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
                 )
+            }
+            
+            weekDays.forEach { date ->
+                val dateString = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val dayMood = moodsByDate[dateString]?.firstOrNull()
                 
-                if (showAsFullBlock) {
-                    Spacer(modifier = Modifier.height(3.dp))
-                    
-                    // 時間情報
-                    Text(
-                        text = "${activity.date} ${activity.start}-${activity.end}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = categoryColors.textColor.copy(alpha = 0.8f),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    
-                    // 内容（スペースに余裕がある場合）
-                    if (activity.contents?.isNotBlank() == true && activity.contents.length <= 20) {
-                        Spacer(modifier = Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clickable { onMoodClick(date, dayMood) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (dayMood != null) {
+                        val moodOption = MoodOptions.moodScale.find { it.value == dayMood.mood }
                         Text(
-                            text = activity.contents,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = categoryColors.textColor.copy(alpha = 0.7f),
-                            fontSize = 8.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
+                            text = moodOption?.emoji ?: "😐",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "ムード追加",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
         }
-    }
-}
-
-/**
- * アクティビティ継続表示コンポーネント（より明確な継続表示）
- */
-@Composable 
-private fun ActivityContinuation(
-    activity: Activity,
-    modifier: Modifier = Modifier
-) {
-    val categoryColors = CategoryColors.getColorScheme(activity.category)
-    
-    Card(
-        modifier = modifier.fillMaxSize(),
-        colors = CardDefaults.cardColors(
-            containerColor = categoryColors.backgroundColor.copy(alpha = 0.7f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+        
+        // 時間軸グリッド（絶対配置で連続ブロック表示・スクロール対応）
+        val scrollState = rememberScrollState()
+        
+        // 初期表示時に6時の位置にスクロール（一度だけ実行）
+        LaunchedEffect(weekStart) {
+            val targetHour = 6
+            val scrollPosition = (hourHeight * targetHour).value.toInt()
+            scrollState.animateScrollTo(scrollPosition)
+        }
+        
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(2.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .weight(1f) // 残りの空間を使用
+                .verticalScroll(scrollState)
         ) {
-            // 継続を示す縦線
             Box(
                 modifier = Modifier
-                    .width(3.dp)
+                    .fillMaxWidth()
+                    .height(totalGridHeight)
+            ) {
+            // 時間軸ラベル列
+            Column(
+                modifier = Modifier
+                    .width(60.dp)
                     .fillMaxHeight()
-                    .background(
-                        color = categoryColors.textColor.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(1.5.dp)
-                    )
-            )
+            ) {
+                for (hour in startHour until endHour) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(hourHeight)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            ),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Text(
+                            text = String.format("%02d:00", hour),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            }
+            
+            // 日付ごとのグリッドとアクティビティ
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 60.dp)
+            ) {
+                weekDays.forEach { date ->
+                    val dateString = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                    val dayActivities = activitiesByDate[dateString] ?: emptyList()
+                    
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    ) {
+                        // 背景グリッド（30分間隔で表示、クリック用）
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            for (hour in startHour until endHour) {
+                                // 00分スロット
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(minuteHeight * 30) // 30分間隔
+                                        .border(
+                                            width = 0.5.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                        )
+                                        .clickable { onTimeSlotClick(date, hour) }
+                                )
+                                // 30分スロット
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(minuteHeight * 30) // 30分間隔
+                                        .border(
+                                            width = 0.5.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                        )
+                                        .clickable { onTimeSlotClick(date, hour) }
+                                )
+                            }
+                        }
+                        
+                        // アクティビティブロック（絶対配置・重複対応）
+                        val overlappingGroups = groupOverlappingActivities(dayActivities)
+                        overlappingGroups.forEach { group ->
+                            if (group.size == 1) {
+                                // 単独アクティビティ
+                                ContinuousActivityBlock(
+                                    activity = group.first(),
+                                    startHour = startHour,
+                                    minuteHeight = minuteHeight,
+                                    onActivityClick = onActivityClick,
+                                    widthFraction = 1f,
+                                    horizontalOffset = 0f
+                                )
+                            } else {
+                                // 重複アクティビティ群
+                                group.forEachIndexed { index, activity ->
+                                    ContinuousActivityBlock(
+                                        activity = activity,
+                                        startHour = startHour,
+                                        minuteHeight = minuteHeight,
+                                        onActivityClick = onActivityClick,
+                                        widthFraction = 1f / group.size,
+                                        horizontalOffset = index * (1f / group.size)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         }
     }
 }
 
 /**
- * 改善された継続表示コンポーネント（Web版スタイルの一体感を演出）
- * 縦線ではなく、統合された背景で一体感を表現
+ * 重複するアクティビティをグループ化する関数
+ * 時間が重なるアクティビティ同士を同じグループにまとめる
  */
+private fun groupOverlappingActivities(activities: List<Activity>): List<List<Activity>> {
+    if (activities.isEmpty()) return emptyList()
+    
+    val groups = mutableListOf<MutableList<Activity>>()
+    
+    activities.forEach { activity ->
+        var activityStart = timeToMinutes(activity.start)
+        var activityEnd = timeToMinutes(activity.end)
+        
+        // 日跨ぎの場合の処理
+        if (activityEnd <= activityStart) {
+            activityEnd += 24 * 60 // 翌日扱いで24時間を追加
+        }
+        
+        // 既存のグループで重複するものがあるかチェック
+        val overlappingGroup = groups.find { group ->
+            group.any { existing ->
+                var existingStart = timeToMinutes(existing.start)
+                var existingEnd = timeToMinutes(existing.end)
+                
+                // 既存アクティビティも日跨ぎの場合の処理
+                if (existingEnd <= existingStart) {
+                    existingEnd += 24 * 60
+                }
+                
+                // 時間が重複している場合（日跨ぎ考慮）
+                !(activityEnd <= existingStart || activityStart >= existingEnd)
+            }
+        }
+        
+        if (overlappingGroup != null) {
+            // 既存のグループに追加
+            overlappingGroup.add(activity)
+        } else {
+            // 新しいグループを作成
+            groups.add(mutableListOf(activity))
+        }
+    }
+    
+    return groups
+}
+
+/**
+ * 時間文字列を分に変換するヘルパー関数
+ */
+private fun timeToMinutes(time: String): Int {
+    val parts = time.split(":")
+    val hour = parts.getOrNull(0)?.toIntOrNull() ?: 0
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    return hour * 60 + minute
+}
+
 @Composable
-private fun UnifiedContinuationBlock(
+private fun ContinuousActivityBlock(
     activity: Activity,
+    startHour: Int,
+    minuteHeight: Dp,
+    onActivityClick: (Activity) -> Unit,
+    widthFraction: Float = 1f,
+    horizontalOffset: Float = 0f,
     modifier: Modifier = Modifier
 ) {
+    // 時間を分析してオフセットと高さを計算（1分単位）
+    val startParts = activity.start.split(":")
+    val endParts = activity.end.split(":")
+    
+    val activityStartHour = startParts.getOrNull(0)?.toIntOrNull() ?: 0
+    val activityStartMinute = startParts.getOrNull(1)?.toIntOrNull() ?: 0
+    val activityEndHour = endParts.getOrNull(0)?.toIntOrNull() ?: 0
+    val activityEndMinute = endParts.getOrNull(1)?.toIntOrNull() ?: 0
+    
+    // 開始時刻からの総分数を計算（日跨ぎ対応）
+    val startTotalMinutes = (activityStartHour - startHour) * 60 + activityStartMinute
+    var endTotalMinutes = (activityEndHour - startHour) * 60 + activityEndMinute
+    
+    // 日跨ぎの場合（終了時刻が開始時刻より小さい場合）
+    if (endTotalMinutes <= startTotalMinutes) {
+        endTotalMinutes += 24 * 60 // 翌日扱いで24時間を追加
+    }
+    
+    val durationMinutes = (endTotalMinutes - startTotalMinutes).coerceAtLeast(1)
+    
+    // 位置とサイズ計算（1分 = 1dp）
+    val topOffset = minuteHeight * startTotalMinutes
+    val blockHeight = minuteHeight * durationMinutes
+    
     val categoryColors = CategoryColors.getColorScheme(activity.category)
     
-    Card(
-        modifier = modifier.fillMaxSize(),
-        colors = CardDefaults.cardColors(
-            containerColor = categoryColors.backgroundColor.copy(alpha = 0.85f) // より強い一体感
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(0.dp) // 継続部分は角丸なしで統一感
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(blockHeight)
+            .offset(y = topOffset)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 2.dp),
-            contentAlignment = Alignment.Center
+        val containerWidth = maxWidth
+        val blockWidth = containerWidth * widthFraction
+        val leftOffset = containerWidth * horizontalOffset
+        
+        Card(
+            onClick = { onActivityClick(activity) },
+            modifier = modifier
+                .width(blockWidth)
+                .fillMaxHeight()
+                .offset(x = leftOffset)
+                .padding(horizontal = 1.dp, vertical = 1.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = categoryColors.backgroundColor
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            shape = RoundedCornerShape(6.dp)
         ) {
-            // 左端に太いアクセントライン（Web版風の統一感演出）
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .width(4.dp)
-                    .background(
-                        color = categoryColors.textColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(2.dp)
-                    )
-                    .align(Alignment.CenterStart)
-            )
-            
-            // 継続を示すテキスト（短時間のアクティビティでも表示）
-            if (activity.title.length <= 8) {
+                    .fillMaxSize()
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.Top
+            ) {
+                // タイトル
                 Text(
-                    text = "●",
-                    color = categoryColors.textColor.copy(alpha = 0.4f),
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center
+                    text = if (widthFraction < 0.5f && activity.title.length > 8) {
+                        // 狭いスペースの場合は短縮
+                        activity.title.take(8) + "..."
+                    } else {
+                        activity.title
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = categoryColors.textColor,
+                    maxLines = if (widthFraction < 0.5f) 1 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = if (widthFraction < 0.5f) 9.sp else 11.sp
                 )
+                
+                // 時間表示（十分なスペースがある場合）
+                if (durationMinutes >= 30 && widthFraction >= 0.6f) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${activity.start}-${activity.end}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = categoryColors.textColor.copy(alpha = 0.8f),
+                        fontSize = 8.sp
+                    )
+                }
+                
+                // 内容表示（十分なスペースがある場合）
+                if (durationMinutes >= 60 && widthFraction >= 0.8f && !activity.contents.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = activity.contents,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = categoryColors.textColor.copy(alpha = 0.7f),
+                        fontSize = 7.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
