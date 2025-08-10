@@ -590,11 +590,11 @@ fun WeeklyCalendarView(
         // 時間軸グリッド（絶対配置で連続ブロック表示・スクロール対応）
         val scrollState = rememberScrollState()
         
-        // 初期表示時に6時の位置にスクロール
-        LaunchedEffect(Unit) {
+        // 初期表示時に6時の位置にスクロール（一度だけ実行）
+        LaunchedEffect(weekStart) {
             val targetHour = 6
             val scrollPosition = (hourHeight * targetHour).value.toInt()
-            scrollState.scrollTo(scrollPosition)
+            scrollState.animateScrollTo(scrollPosition)
         }
         
         Box(
@@ -724,16 +724,26 @@ private fun groupOverlappingActivities(activities: List<Activity>): List<List<Ac
     val groups = mutableListOf<MutableList<Activity>>()
     
     activities.forEach { activity ->
-        val activityStart = timeToMinutes(activity.start)
-        val activityEnd = timeToMinutes(activity.end)
+        var activityStart = timeToMinutes(activity.start)
+        var activityEnd = timeToMinutes(activity.end)
+        
+        // 日跨ぎの場合の処理
+        if (activityEnd <= activityStart) {
+            activityEnd += 24 * 60 // 翌日扱いで24時間を追加
+        }
         
         // 既存のグループで重複するものがあるかチェック
         val overlappingGroup = groups.find { group ->
             group.any { existing ->
-                val existingStart = timeToMinutes(existing.start)
-                val existingEnd = timeToMinutes(existing.end)
+                var existingStart = timeToMinutes(existing.start)
+                var existingEnd = timeToMinutes(existing.end)
                 
-                // 時間が重複している場合
+                // 既存アクティビティも日跨ぎの場合の処理
+                if (existingEnd <= existingStart) {
+                    existingEnd += 24 * 60
+                }
+                
+                // 時間が重複している場合（日跨ぎ考慮）
                 !(activityEnd <= existingStart || activityStart >= existingEnd)
             }
         }
@@ -779,9 +789,15 @@ private fun ContinuousActivityBlock(
     val activityEndHour = endParts.getOrNull(0)?.toIntOrNull() ?: 0
     val activityEndMinute = endParts.getOrNull(1)?.toIntOrNull() ?: 0
     
-    // 開始時刻からの総分数を計算
+    // 開始時刻からの総分数を計算（日跨ぎ対応）
     val startTotalMinutes = (activityStartHour - startHour) * 60 + activityStartMinute
-    val endTotalMinutes = (activityEndHour - startHour) * 60 + activityEndMinute
+    var endTotalMinutes = (activityEndHour - startHour) * 60 + activityEndMinute
+    
+    // 日跨ぎの場合（終了時刻が開始時刻より小さい場合）
+    if (endTotalMinutes <= startTotalMinutes) {
+        endTotalMinutes += 24 * 60 // 翌日扱いで24時間を追加
+    }
+    
     val durationMinutes = (endTotalMinutes - startTotalMinutes).coerceAtLeast(1)
     
     // 位置とサイズ計算（1分 = 1dp）
