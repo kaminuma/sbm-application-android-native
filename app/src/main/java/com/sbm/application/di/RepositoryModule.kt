@@ -39,6 +39,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAIConfigRepository(
-        aiConfigRepositoryImpl: AIConfigRepositoryImpl
+        impl: AIConfigRepositoryImpl
     ): AIConfigRepository
+
+
 }

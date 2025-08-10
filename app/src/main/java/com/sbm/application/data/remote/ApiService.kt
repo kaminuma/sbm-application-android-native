@@ -3,6 +3,8 @@ package com.sbm.application.data.remote
 import com.sbm.application.data.remote.dto.AuthDto
 import com.sbm.application.data.remote.dto.ActivityDto
 import com.sbm.application.data.remote.dto.MoodDto
+import com.sbm.application.data.remote.dto.AIAnalysisRequestDto
+import com.sbm.application.data.remote.dto.AIAnalysisResponseDto
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -71,4 +73,11 @@ interface ApiService {
         @Path("date") date: String,
         @Query("userId") userId: Long
     ): Response<MoodDto.OperationResponse>
+    
+    // AI Analysis (Proxy to Backend API)
+    @POST("ai/analysis")
+    suspend fun generateAIAnalysis(
+        @Header("Authorization") token: String,
+        @Body request: AIAnalysisRequestDto
+    ): Response<AIAnalysisResponseDto>
 }

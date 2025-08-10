@@ -54,3 +54,6 @@ google-services.json
 .env.local
 .env.development
 .env.production
+
+# docs
+docs/

@@ -2,13 +2,13 @@ package com.sbm.application.di
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.sbm.application.data.local.ConfigManager
-import com.sbm.application.data.remote.GeminiApiService
-import com.sbm.application.data.repository.AIConfigRepositoryImpl
-import com.sbm.application.data.repository.GeminiAnalysisRepositoryImpl
+import com.sbm.application.data.remote.ApiService
+import com.sbm.application.data.repository.ProxyAIAnalysisRepositoryImpl
 import com.sbm.application.domain.repository.AIAnalysisRepository
 import com.sbm.application.domain.repository.AIConfigRepository
+import com.sbm.application.domain.repository.AuthRepository
 import com.sbm.application.domain.service.AIPromptGenerator
+import com.sbm.application.data.metrics.AIAnalysisMetrics
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,63 +35,22 @@ object AIModule {
 
     @Provides
     @Singleton
-    @Named("gemini_http_client")
-    fun provideGeminiOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-        
-        return OkHttpClient.Builder()
-            .addInterceptor(loggingInterceptor)
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    @Named("gemini_retrofit")
-    fun provideGeminiRetrofit(
-        @Named("gemini_http_client") okHttpClient: OkHttpClient,
-        gson: Gson
-    ): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl(GeminiApiService.BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideGeminiApiService(
-        @Named("gemini_retrofit") retrofit: Retrofit
-    ): GeminiApiService {
-        return retrofit.create(GeminiApiService::class.java)
-    }
-
-    @Provides
-    @Singleton
     fun provideAIPromptGenerator(): AIPromptGenerator {
         return AIPromptGenerator()
     }
 
-    // AIConfigRepositoryの定義はRepositoryModuleに移動済み
-
+    // バックエンドAPI経由版のみ（新実装）
     @Provides
     @Singleton
     fun provideAIAnalysisRepository(
-        geminiApiService: GeminiApiService,
-        configManager: ConfigManager,
-        gson: Gson,
-        promptGenerator: AIPromptGenerator
+        apiService: ApiService,
+        authRepository: AuthRepository,
+        metrics: com.sbm.application.data.metrics.AIAnalysisMetrics
     ): AIAnalysisRepository {
-        return GeminiAnalysisRepositoryImpl(
-            geminiApiService = geminiApiService,
-            configManager = configManager,
-            gson = gson,
-            promptGenerator = promptGenerator
+        return ProxyAIAnalysisRepositoryImpl(
+            apiService = apiService,
+            authRepository = authRepository,
+            metrics = metrics
         )
     }
 }
