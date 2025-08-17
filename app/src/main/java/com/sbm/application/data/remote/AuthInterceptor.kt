@@ -2,7 +2,7 @@ package com.sbm.application.data.remote
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+// import android.util.Log // Removed for production
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.sbm.application.BuildConfig
@@ -36,39 +36,20 @@ class AuthInterceptor @Inject constructor(
         return try {
             // トークンを取得（暗号化されたSharedPreferencesから直接）
             val token = sharedPreferences.getString("auth_token", null)
-            if (BuildConfig.DEBUG) {
-                Log.d("AuthInterceptor", "Processing request to $url")
-                Log.d("AuthInterceptor", "Token present: ${!token.isNullOrEmpty()}")
-                Log.d("AuthInterceptor", "Request method: ${originalRequest.method}")
-            }
             
             val response = if (!token.isNullOrEmpty()) {
                 val authenticatedRequest = originalRequest.newBuilder()
                     .header("Authorization", "Bearer $token")
                     .build()
                 
-                if (BuildConfig.DEBUG) {
-                    Log.d("AuthInterceptor", "Making authenticated request to $url")
-                }
                 chain.proceed(authenticatedRequest)
             } else {
-                if (BuildConfig.DEBUG) {
-                    Log.d("AuthInterceptor", "No token available, making unauthenticated request to $url")
-                }
                 chain.proceed(originalRequest)
-            }
-            
-            if (BuildConfig.DEBUG) {
-                Log.d("AuthInterceptor", "Response received for $url - code: ${response.code}")
             }
             
             // レスポンスコードをチェック
             when (response.code) {
                 401, 403 -> {
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthInterceptor", "Auth error detected for $url - code: ${response.code}, message: ${response.message}")
-                        Log.d("AuthInterceptor", "Triggering onAuthError callback")
-                    }
                     // 認証エラーの場合、コールバック実行
                     onAuthError?.invoke(response.code, response.message)
                 }
@@ -76,9 +57,6 @@ class AuthInterceptor @Inject constructor(
             
             response
         } catch (e: Exception) {
-            if (BuildConfig.DEBUG) {
-                Log.e("AuthInterceptor", "Exception occurred for $url: ${e.message}", e)
-            }
             // エラーが発生した場合は元のリクエストを実行
             chain.proceed(originalRequest)
         }

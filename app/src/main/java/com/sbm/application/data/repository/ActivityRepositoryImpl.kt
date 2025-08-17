@@ -1,6 +1,6 @@
 package com.sbm.application.data.repository
 
-import android.util.Log
+// import android.util.Log // Removed for production
 import com.sbm.application.BuildConfig
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.dto.ActivityDto
@@ -39,9 +39,6 @@ class ActivityRepositoryImpl @Inject constructor(
                     
                     if (response.isSuccessful) {
                         val responseBody = response.body()
-                        if (BuildConfig.DEBUG) {
-                            Log.d("ActivityRepository", "API Response: [REDACTED FOR SECURITY]")
-                        }
                         
                         responseBody?.map { dto ->
                             // APIレスポンスの実際の形式に対応
@@ -76,21 +73,11 @@ class ActivityRepositoryImpl @Inject constructor(
     override suspend fun createActivity(title: String, contents: String?, start: String, end: String, date: String, category: String, categorySub: String?): Result<Activity> {
         return withContext(Dispatchers.IO) {
             try {
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "createActivity started")
-                }
-                
                 // userId を取得（retryWithBackoff の外で定義）
                 val userId = authRepository.getStoredUserId() ?: throw Exception("User ID not found")
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "userId = $userId")
-                }
                 
                 // createActivity はリトライなしで実行（重複登録を防ぐため）
                 val token = getAuthToken()
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "token obtained")
-                }
                 
                 val request = ActivityDto.CreateRequest(
                     userId = userId.toInt(),
@@ -102,31 +89,18 @@ class ActivityRepositoryImpl @Inject constructor(
                     category = category,
                     categorySub = categorySub
                 )
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "request created = [REDACTED FOR SECURITY]")
-                }
                 
                 val response = apiService.createActivity("Bearer $token", request)
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "API call completed, response code = ${response.code()}")
-                }
                 
                 if (response.isSuccessful) {
                     // ResponseBodyからプレーンテキストを取得
                     val responseBodyString = response.body()?.string() ?: ""
-                    if (BuildConfig.DEBUG) {
-                        Log.d("ActivityRepository", "API response body: [REDACTED FOR SECURITY]")
-                        Log.d("ActivityRepository", "API call successful")
-                    }
                 } else {
                     throw Exception("Failed to create activity: ${response.message()}")
                 }
                 
                 // API後リロード方式のため、ダミーレスポンスを返却（ViewModelでloadActivities()が呼ばれる）
                 val storedUserId = authRepository.getStoredUserId()?.toLong()
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "storedUserId for response = $storedUserId")
-                }
                 
                 if (storedUserId == null) {
                     throw Exception("User ID not found for response creation")
@@ -144,18 +118,9 @@ class ActivityRepositoryImpl @Inject constructor(
                     categorySub = categorySub
                 )
                 
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "Returning dummy activity with ID: ${createdActivity.activityId}")
-                }
                 Result.success(createdActivity)
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) {
-                    Log.e("ActivityRepository", "Exception occurred: ${e.message}", e)
-                }
                 val networkError = NetworkError.fromThrowable(e)
-                if (BuildConfig.DEBUG) {
-                    Log.e("ActivityRepository", "NetworkError created: ${networkError.errorMessage}")
-                }
                 Result.failure(networkError)
             }
         }
@@ -164,16 +129,9 @@ class ActivityRepositoryImpl @Inject constructor(
     override suspend fun updateActivity(activityId: Long, title: String, contents: String?, start: String, end: String, date: String, category: String, categorySub: String?): Result<Activity> {
         return withContext(Dispatchers.IO) {
             try {
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "updateActivity started for activityId = $activityId")
-                }
-                
                 networkUtil.retryWithBackoff(maxRetries = 3) {
                     val token = getAuthToken()
                     val userId = authRepository.getStoredUserId()?.toInt() ?: throw Exception("User ID not found")
-                    if (BuildConfig.DEBUG) {
-                        Log.d("ActivityRepository", "updateActivity userId = $userId")
-                    }
                     
                     val request = ActivityDto.UpdateRequest(
                         userId = userId,
@@ -185,22 +143,12 @@ class ActivityRepositoryImpl @Inject constructor(
                         category = category,
                         categorySub = categorySub
                     )
-                    if (BuildConfig.DEBUG) {
-                        Log.d("ActivityRepository", "updateActivity request = [REDACTED FOR SECURITY]")
-                    }
                     
                     val response = apiService.updateActivity("Bearer $token", activityId, request)
-                    if (BuildConfig.DEBUG) {
-                        Log.d("ActivityRepository", "updateActivity API call completed, response code = ${response.code()}")
-                    }
                     
                     if (response.isSuccessful) {
                         // ResponseBodyから空のレスポンスを処理
                         val responseBodyString = response.body()?.string() ?: ""
-                        if (BuildConfig.DEBUG) {
-                            Log.d("ActivityRepository", "updateActivity response body = [REDACTED FOR SECURITY]")
-                            Log.d("ActivityRepository", "updateActivity API call successful")
-                        }
                         Unit // 更新成功
                     } else {
                         throw Exception("Failed to update activity: ${response.message()}")
@@ -221,18 +169,9 @@ class ActivityRepositoryImpl @Inject constructor(
                     categorySub = categorySub
                 )
                 
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "updateActivity returning dummy activity")
-                }
                 Result.success(updatedActivity)
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) {
-                    Log.e("ActivityRepository", "updateActivity exception occurred: ${e.message}", e)
-                }
                 val networkError = NetworkError.fromThrowable(e)
-                if (BuildConfig.DEBUG) {
-                    Log.e("ActivityRepository", "updateActivity NetworkError created: ${networkError.errorMessage}")
-                }
                 Result.failure(networkError)
             }
         }
@@ -241,59 +180,26 @@ class ActivityRepositoryImpl @Inject constructor(
     override suspend fun deleteActivity(id: Long): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "deleteActivity started for id = $id")
-                }
-                
                 val token = getAuthToken()
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "deleteActivity token obtained, length = ${token?.length ?: 0}")
-                }
                 
                 if (token.isNullOrEmpty()) {
-                    if (BuildConfig.DEBUG) {
-                        Log.e("ActivityRepository", "deleteActivity failed - no token available")
-                    }
                     return@withContext Result.failure(Exception("No authentication token available"))
                 }
                 
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "deleteActivity making API call...")
-                }
                 val response = apiService.deleteActivity("Bearer $token", id)
-                if (BuildConfig.DEBUG) {
-                    Log.d("ActivityRepository", "deleteActivity API call completed")
-                    Log.d("ActivityRepository", "deleteActivity response code = ${response.code()}")
-                    Log.d("ActivityRepository", "deleteActivity response message = ${response.message()}")
-                    Log.d("ActivityRepository", "deleteActivity response isSuccessful = ${response.isSuccessful}")
-                }
                 
                 if (response.isSuccessful) {
                     // ResponseBodyから空のレスポンスを処理
                     val responseBodyString = try {
                         response.body()?.string() ?: ""
                     } catch (e: Exception) {
-                        if (BuildConfig.DEBUG) {
-                            Log.e("ActivityRepository", "deleteActivity error reading response body: ${e.message}")
-                        }
                         ""
-                    }
-                    if (BuildConfig.DEBUG) {
-                        Log.d("ActivityRepository", "deleteActivity response body = [REDACTED FOR SECURITY]")
-                        Log.d("ActivityRepository", "deleteActivity API call successful")
                     }
                     Result.success(Unit)
                 } else {
-                    if (BuildConfig.DEBUG) {
-                        Log.e("ActivityRepository", "deleteActivity API failed with code ${response.code()}")
-                        Log.e("ActivityRepository", "deleteActivity error response body = [REDACTED FOR SECURITY]")
-                    }
                     Result.failure(Exception("Failed to delete activity: HTTP ${response.code()} - ${response.message()}"))
                 }
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) {
-                    Log.e("ActivityRepository", "deleteActivity exception occurred: ${e.message}", e)
-                }
                 Result.failure(e)
             }
         }
@@ -326,9 +232,6 @@ class ActivityRepositoryImpl @Inject constructor(
                 Pair("2024-01-01", dateTimeString)
             }
         } catch (e: Exception) {
-            if (BuildConfig.DEBUG) {
-                Log.e("ActivityRepository", "Error parsing datetime: $dateTimeString - ${e.message}")
-            }
             Pair("2024-01-01", "00:00")
         }
     }

@@ -75,9 +75,15 @@ android {
             if (hasKeystore) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            
+            // 本番環境URL
+            buildConfigField("String", "BACKEND_URL", "\"https://api.sbm-app.com\"")
         }
         debug {
             isDebuggable = true
+            
+            // デバッグでも本番環境を使用（テスト目的）
+            buildConfigField("String", "BACKEND_URL", "\"https://api.sbm-app.com\"")
         }
     }
     
@@ -116,6 +122,9 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.navigation:navigation-compose:2.7.6")
+    
+    // Browser for OAuth
+    implementation("androidx.browser:browser:1.7.0")  // Chrome Custom Tabs用
     
     // Core Android libraries
     implementation("androidx.core:core-ktx:1.12.0")

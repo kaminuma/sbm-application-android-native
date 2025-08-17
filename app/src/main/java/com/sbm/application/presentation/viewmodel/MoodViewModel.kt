@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
+// import android.util.Log // Removed for production
 import com.sbm.application.BuildConfig
 
 @HiltViewModel
@@ -39,10 +39,7 @@ class MoodViewModel @Inject constructor(
     
     fun loadMoodRecords() {
         viewModelScope.launch {
-            if (BuildConfig.DEBUG) {
-                Log.d("MoodViewModel", "loadMoodRecords: Starting API call")
-            }
-            
+                        
             _uiState.value = _uiState.value.copy(
                 isLoading = true, 
                 networkError = null,
@@ -51,10 +48,7 @@ class MoodViewModel @Inject constructor(
             
             moodRepository.getMoodRecords()
                 .onSuccess { moodRecords ->
-                    if (BuildConfig.DEBUG) {
-                        Log.d("MoodViewModel", "loadMoodRecords: Success - loaded ${moodRecords.size} records")
-                    }
-                    _uiState.value = _uiState.value.copy(
+                                        _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         moodRecords = moodRecords,
                         networkError = null,
@@ -62,10 +56,7 @@ class MoodViewModel @Inject constructor(
                     )
                 }
                 .onFailure { error ->
-                    if (BuildConfig.DEBUG) {
-                        Log.e("MoodViewModel", "loadMoodRecords: Failed - ${error.message}")
-                    }
-                    val networkError = if (error is NetworkError) error else null
+                                        val networkError = if (error is NetworkError) error else null
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         networkError = networkError,
@@ -77,10 +68,7 @@ class MoodViewModel @Inject constructor(
     
     fun createMoodRecord(date: String, mood: Int, note: String?) {
         viewModelScope.launch {
-            if (BuildConfig.DEBUG) {
-                Log.d("MoodViewModel", "createMoodRecord: Starting API call")
-            }
-            
+                        
             // ローディング表示
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
@@ -90,17 +78,11 @@ class MoodViewModel @Inject constructor(
             // 直接API呼び出し（楽観的更新なし）
             moodRepository.createMoodRecord(date, mood, note)
                 .onSuccess { _ ->
-                    if (BuildConfig.DEBUG) {
-                        Log.d("MoodViewModel", "createMoodRecord: API Success - reloading mood records")
-                    }
-                    // API成功後にデータを再取得
+                                        // API成功後にデータを再取得
                     loadMoodRecords()
                 }
                 .onFailure { error ->
-                    if (BuildConfig.DEBUG) {
-                        Log.e("MoodViewModel", "createMoodRecord: API Error - ${error.message}")
-                    }
-                    _uiState.value = _uiState.value.copy(
+                                        _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error.message ?: "エラーが発生しました"
                     )
@@ -110,10 +92,7 @@ class MoodViewModel @Inject constructor(
     
     fun updateMoodRecord(date: String, mood: Int, note: String?) {
         viewModelScope.launch {
-            if (BuildConfig.DEBUG) {
-                Log.d("MoodViewModel", "updateMoodRecord: Starting API call")
-            }
-            
+                        
             // ローディング表示
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
@@ -123,17 +102,11 @@ class MoodViewModel @Inject constructor(
             // 直接API呼び出し（楽観的更新なし）
             moodRepository.updateMoodRecord(date, mood, note)
                 .onSuccess { _ ->
-                    if (BuildConfig.DEBUG) {
-                        Log.d("MoodViewModel", "updateMoodRecord: API Success - reloading mood records")
-                    }
-                    // API成功後にデータを再取得
+                                        // API成功後にデータを再取得
                     loadMoodRecords()
                 }
                 .onFailure { error ->
-                    if (BuildConfig.DEBUG) {
-                        Log.e("MoodViewModel", "updateMoodRecord: API Error - ${error.message}")
-                    }
-                    _uiState.value = _uiState.value.copy(
+                                        _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error.message ?: "エラーが発生しました"
                     )
@@ -154,16 +127,10 @@ class MoodViewModel @Inject constructor(
             moodRepository.deleteMoodRecord(date)
                 .onSuccess {
                     // 削除成功後に強制的にデータを再取得
-                    if (BuildConfig.DEBUG) {
-                        Log.d("MoodViewModel", "Delete successful, reloading mood records...")
-                    }
-                    loadMoodRecords()
+                                        loadMoodRecords()
                 }
                 .onFailure { error ->
-                    if (BuildConfig.DEBUG) {
-                        Log.e("MoodViewModel", "Delete failed: ${error.message}")
-                    }
-                    // 削除失敗時はエラー表示
+                                        // 削除失敗時はエラー表示
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error.message ?: "削除に失敗しました"

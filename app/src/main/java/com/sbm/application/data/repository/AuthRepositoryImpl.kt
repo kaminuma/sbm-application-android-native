@@ -8,7 +8,9 @@ import androidx.security.crypto.MasterKey
 import com.sbm.application.BuildConfig
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.dto.AuthDto
+import com.sbm.application.data.remote.dto.LoginResponse
 import com.sbm.application.domain.repository.AuthRepository
+import retrofit2.Response
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,10 +38,6 @@ class AuthRepositoryImpl @Inject constructor(
                 if (response.isSuccessful) {
                     val loginResponse = response.body()
                     // デバッグ用ログ出力（セキュリティ考慮）
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthRepository", "Login API Response: [REDACTED FOR SECURITY]")
-                        Log.d("AuthRepository", "Response code: ${response.code()}")
-                    }
                     
                     if (loginResponse != null && !loginResponse.token.isNullOrEmpty() && !loginResponse.userId.isNullOrEmpty()) {
                         // トークンを保存
@@ -57,16 +55,9 @@ class AuthRepositoryImpl @Inject constructor(
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    if (BuildConfig.DEBUG) {
-                        Log.e("AuthRepository", "Login API Error: ${response.code()} - ${response.message()}")
-                        Log.e("AuthRepository", "Login Error Body: $errorBody")
-                    }
                     Result.failure(Exception("ログインに失敗しました: ${response.message()} (${response.code()})"))
                 }
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) {
-                    Log.e("AuthRepository", "Login API Exception: ${e.message}", e)
-                }
                 Result.failure(Exception("ログイン処理中にエラーが発生しました: ${e.message}"))
             }
         }
@@ -85,30 +76,17 @@ class AuthRepositoryImpl @Inject constructor(
                 
                 if (response.isSuccessful) {
                     val registerResponse = response.body()
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthRepository", "Register API Response: [REDACTED FOR SECURITY]")
-                        Log.d("AuthRepository", "Register response code: ${response.code()}")
-                    }
                     
                     if (registerResponse != null) {
                         // 登録成功の場合、成功のダミー値を返す（自動ログインは行わない）
-                        if (BuildConfig.DEBUG) {
-                            Log.d("AuthRepository", "Registration successful")
-                        }
                         Result.success(Pair("registration_success", "registration_success"))
                     } else {
                         Result.failure(Exception("登録の応答が無効です: レスポンスボディが空です"))
                     }
                 } else {
-                    if (BuildConfig.DEBUG) {
-                        Log.e("AuthRepository", "Register API Error: ${response.code()} - ${response.message()}")
-                    }
                     Result.failure(Exception("登録に失敗しました: ${response.message()} (${response.code()})"))
                 }
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) {
-                    Log.e("AuthRepository", "Register API Exception: ${e.message}", e)
-                }
                 Result.failure(Exception("登録処理中にエラーが発生しました: ${e.message}"))
             }
         }
@@ -190,6 +168,25 @@ class AuthRepositoryImpl @Inject constructor(
             .remove("refresh_token")
             .apply()
         cachedToken = null
+    }
+    
+    override suspend fun getOAuth2Session(sessionId: String): Response<LoginResponse> {
+        return withContext(Dispatchers.IO) {
+            apiService.getOAuth2Session(sessionId)
+        }
+    }
+    
+    override suspend fun saveToken(token: String) {
+        sharedPreferences.edit()
+            .putString("auth_token", token)
+            .apply()
+        cachedToken = token
+    }
+    
+    override suspend fun saveUserId(userId: String) {
+        sharedPreferences.edit()
+            .putString("user_id", userId)
+            .apply()
     }
     
     private fun createEncryptedSharedPreferences(context: Context): SharedPreferences {
