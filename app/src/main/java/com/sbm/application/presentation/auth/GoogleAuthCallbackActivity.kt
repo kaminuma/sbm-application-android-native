@@ -45,9 +45,13 @@ class GoogleAuthCallbackActivity : ComponentActivity() {
             viewModel.fetchJwtToken(sessionId).collect { result ->
                 when (result) {
                     is Result.Success -> {
-                        // メイン画面へ遷移
-                        startActivity(Intent(this@GoogleAuthCallbackActivity, MainActivity::class.java))
-                        finishAffinity()
+                        // メイン画面へ遷移（認証成功フラグを付けて）
+                        val intent = Intent(this@GoogleAuthCallbackActivity, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            putExtra("GOOGLE_AUTH_SUCCESS", true)
+                        }
+                        startActivity(intent)
+                        finish()
                     }
                     is Result.Error -> {
                         Toast.makeText(

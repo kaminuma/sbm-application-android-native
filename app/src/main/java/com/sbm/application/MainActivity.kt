@@ -12,15 +12,47 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private var shouldCheckAuth = false
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Googleログイン成功フラグをチェック
+        val isGoogleAuthSuccess = intent.getBooleanExtra("GOOGLE_AUTH_SUCCESS", false)
+        
         setContent {
             SBMTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    SBMNavigation()
+                    SBMNavigation(
+                        isGoogleAuthSuccess = isGoogleAuthSuccess,
+                        shouldReCheckAuth = false
+                    )
+                }
+            }
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // バックグラウンドから復帰時は認証チェックフラグを立てる
+        if (!shouldCheckAuth) {
+            shouldCheckAuth = true  // 初回は除外
+        } else {
+            // 2回目以降のonResumeで認証チェックをトリガー
+            setContent {
+                SBMTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        SBMNavigation(
+                            isGoogleAuthSuccess = intent.getBooleanExtra("GOOGLE_AUTH_SUCCESS", false),
+                            shouldReCheckAuth = true
+                        )
+                    }
                 }
             }
         }
