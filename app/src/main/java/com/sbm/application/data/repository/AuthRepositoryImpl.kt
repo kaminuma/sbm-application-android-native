@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Base64
+import org.json.JSONObject
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
@@ -108,7 +110,19 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun isLoggedIn(): Boolean {
         val storedToken = sharedPreferences.getString("auth_token", null)
         cachedToken = storedToken
-        return !storedToken.isNullOrEmpty()
+        
+        // トークンが存在しない場合はfalse
+        if (storedToken.isNullOrEmpty()) {
+            return false
+        }
+        
+        // JWTトークンの有効期限をチェック
+        return try {
+            isTokenValid(storedToken)
+        } catch (e: Exception) {
+            // トークンのパースに失敗した場合は無効とみなす
+            false
+        }
     }
     
     override suspend fun getStoredToken(): String? {
@@ -189,6 +203,40 @@ class AuthRepositoryImpl @Inject constructor(
             .apply()
     }
     
+    /**
+     * JWTトークンの有効期限をチェック
+     * @param token JWTトークン
+     * @return トークンが有効な場合はtrue、期限切れの場合はfalse
+     */
+    private fun isTokenValid(token: String): Boolean {
+        try {
+            // JWTトークンを分解（header.payload.signature）
+            val parts = token.split(".")
+            if (parts.size != 3) {
+                return false
+            }
+            
+            // payloadをデコード
+            val payload = String(Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP))
+            val jsonObject = JSONObject(payload)
+            
+            // exp（有効期限）フィールドを取得
+            if (!jsonObject.has("exp")) {
+                // expフィールドがない場合は無効とみなす
+                return false
+            }
+            
+            val exp = jsonObject.getLong("exp")
+            val currentTime = System.currentTimeMillis() / 1000
+            
+            // 現在時刻と比較（5分の余裕を持たせる）
+            return currentTime < (exp - 300)
+        } catch (e: Exception) {
+            // パースエラーなどが発生した場合は無効とみなす
+            return false
+        }
+    }
+
     private fun createEncryptedSharedPreferences(context: Context): SharedPreferences {
         return try {
             val masterKey = MasterKey.Builder(context)

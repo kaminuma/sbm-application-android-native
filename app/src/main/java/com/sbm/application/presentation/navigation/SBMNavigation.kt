@@ -41,7 +41,9 @@ interface AuthSessionManagerEntryPoint {
 @Composable
 fun SBMNavigation(
     navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    isGoogleAuthSuccess: Boolean = false,
+    shouldReCheckAuth: Boolean = false
 ) {
     val context = LocalContext.current
     val authSessionManager = remember {
@@ -56,9 +58,20 @@ fun SBMNavigation(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     
-    // デバッグ用ログ
-    LaunchedEffect(authState.isAuthenticated) {
-            }
+    // Googleログイン成功時の処理
+    LaunchedEffect(isGoogleAuthSuccess) {
+        if (isGoogleAuthSuccess) {
+            // 認証状態を再チェック
+            authViewModel.checkAuthStatus()
+        }
+    }
+    
+    // バックグラウンドから復帰時の認証チェック
+    LaunchedEffect(shouldReCheckAuth) {
+        if (shouldReCheckAuth) {
+            authViewModel.checkAuthStatus()
+        }
+    }
     
     // 認証状態の変化に応じてナビゲーション処理（遅延を追加して確実に処理）
     LaunchedEffect(authState.isAuthenticated) {

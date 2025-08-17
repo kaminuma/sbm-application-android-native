@@ -135,7 +135,7 @@ class AuthViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(registrationSuccess = false)
     }
     
-    private fun checkAuthStatus() {
+    fun checkAuthStatus() {
         viewModelScope.launch {
             val isLoggedIn = authRepository.isLoggedIn()
             val storedUserId = authRepository.getStoredUserId()
