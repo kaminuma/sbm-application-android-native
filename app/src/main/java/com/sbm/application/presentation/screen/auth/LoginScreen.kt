@@ -1,6 +1,9 @@
 package com.sbm.application.presentation.screen.auth
 
+import android.net.Uri
+import android.os.Bundle
 import android.util.Log
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -22,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.sbm.application.BuildConfig
+import com.sbm.application.R
 import com.sbm.application.presentation.viewmodel.AuthViewModel
 import com.sbm.application.presentation.theme.CuteDesignSystem
 
@@ -37,13 +43,7 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     
     LaunchedEffect(uiState.isAuthenticated) {
-        if (BuildConfig.DEBUG) {
-            Log.d("LoginScreen", "Auth state changed: isAuthenticated=${uiState.isAuthenticated}")
-        }
         if (uiState.isAuthenticated) {
-            if (BuildConfig.DEBUG) {
-                Log.d("LoginScreen", "Authentication successful, calling onLoginSuccess after delay")
-            }
             // 少し遅延を入れて、ナビゲーション処理を確実にする
             kotlinx.coroutines.delay(200)
             onLoginSuccess()
@@ -212,9 +212,6 @@ fun LoginScreen(
                     // ログインボタン
                     Button(
                         onClick = {
-                            if (BuildConfig.DEBUG) {
-                                Log.d("LoginScreen", "Login button clicked")
-                            }
                             authViewModel.login(username, password)
                         },
                         modifier = Modifier
@@ -242,6 +239,84 @@ fun LoginScreen(
                                 "ログイン",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.MD))
+                    
+                    // 区切り線
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Divider(
+                            modifier = Modifier.weight(1f),
+                            color = CuteDesignSystem.Colors.OnSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                        Text(
+                            text = "または",
+                            modifier = Modifier.padding(horizontal = CuteDesignSystem.Spacing.MD),
+                            color = CuteDesignSystem.Colors.OnSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Divider(
+                            modifier = Modifier.weight(1f),
+                            color = CuteDesignSystem.Colors.OnSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.MD))
+                    
+                    // Googleログインボタン
+                    val context = LocalContext.current
+                    OutlinedButton(
+                        onClick = {
+                            // Chrome Custom Tabsでブラウザを開く
+                            val customTabsIntent = CustomTabsIntent.Builder()
+                                .setShowTitle(true)
+                                .build()
+                            
+                            // User-Agentを設定
+                            customTabsIntent.intent.putExtra(
+                                "com.android.browser.headers",
+                                Bundle().apply {
+                                    putString("User-Agent", "SBMApp/1.0 Android")
+                                }
+                            )
+                            
+                            // モバイルアプリ識別のためのパラメータを追加
+                            val loginUrl = "${BuildConfig.BACKEND_URL}/oauth2/authorization/google?mobile=true"
+                            customTabsIntent.launchUrl(context, Uri.parse(loginUrl))
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = CuteDesignSystem.Shapes.Medium,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            CuteDesignSystem.Colors.OnSurfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        enabled = !uiState.isLoading
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_google),
+                                contentDescription = "Google",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.Unspecified
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Googleでログイン",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = CuteDesignSystem.Colors.OnSurface
                             )
                         }
                     }

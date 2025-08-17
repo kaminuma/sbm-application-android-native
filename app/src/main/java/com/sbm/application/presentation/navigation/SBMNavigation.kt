@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import android.util.Log
+// import android.util.Log // Removed for production
 import com.sbm.application.BuildConfig
 
 @EntryPoint
@@ -58,13 +58,7 @@ fun SBMNavigation(
     
     // デバッグ用ログ
     LaunchedEffect(authState.isAuthenticated) {
-        if (BuildConfig.DEBUG) {
-            Log.d("SBMNavigation", "Auth state changed: isAuthenticated = ${authState.isAuthenticated}")
-            Log.d("SBMNavigation", "Current route: ${navController.currentDestination?.route}")
-            Log.d("SBMNavigation", "User: ${authState.user}")
-            Log.d("SBMNavigation", "Error: ${authState.error}")
-        }
-    }
+            }
     
     // 認証状態の変化に応じてナビゲーション処理（遅延を追加して確実に処理）
     LaunchedEffect(authState.isAuthenticated) {
@@ -72,48 +66,27 @@ fun SBMNavigation(
         kotlinx.coroutines.delay(100)
         
         val currentRoute = navController.currentDestination?.route
-        if (BuildConfig.DEBUG) {
-            Log.d("SBMNavigation", "Handling auth state change: authenticated=${authState.isAuthenticated}, currentRoute=$currentRoute")
-        }
-        
+                
         when {
             authState.isAuthenticated && (currentRoute == Screen.Login.route || currentRoute == Screen.Register.route) -> {
                 // 認証済みなのにログイン・登録画面にいる場合、メイン画面に遷移
-                if (BuildConfig.DEBUG) {
-                    Log.d("SBMNavigation", "Navigating to Main screen from $currentRoute")
-                }
-                try {
+                                try {
                     navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                         launchSingleTop = true
                     }
-                    if (BuildConfig.DEBUG) {
-                        Log.d("SBMNavigation", "Navigation to Main completed")
-                    }
-                } catch (e: Exception) {
-                    if (BuildConfig.DEBUG) {
-                        Log.e("SBMNavigation", "Navigation error: ${e.message}")
-                    }
-                }
+                                    } catch (e: Exception) {
+                                    }
             }
             !authState.isAuthenticated && currentRoute == Screen.Main.route -> {
                 // 未認証なのにメイン画面にいる場合、ログイン画面に遷移
-                if (BuildConfig.DEBUG) {
-                    Log.d("SBMNavigation", "Navigating to Login screen from $currentRoute")
-                }
-                try {
+                                try {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Main.route) { inclusive = true }
                         launchSingleTop = true
                     }
-                    if (BuildConfig.DEBUG) {
-                        Log.d("SBMNavigation", "Navigation to Login completed")
-                    }
-                } catch (e: Exception) {
-                    if (BuildConfig.DEBUG) {
-                        Log.e("SBMNavigation", "Navigation error: ${e.message}")
-                    }
-                }
+                                    } catch (e: Exception) {
+                                    }
             }
         }
     }
@@ -172,10 +145,7 @@ fun SBMNavigation(
                 },
                 onLoginSuccess = {
                     // ナビゲーションは認証状態変化のLaunchedEffectで自動処理
-                    if (BuildConfig.DEBUG) {
-                        Log.d("SBMNavigation", "LoginScreen - Login success callback triggered")
-                    }
-                },
+                                    },
                 authViewModel = authViewModel
             )
         }
@@ -187,10 +157,7 @@ fun SBMNavigation(
                 },
                 onRegisterSuccess = {
                     // ナビゲーションは認証状態変化のLaunchedEffectで自動処理
-                    if (BuildConfig.DEBUG) {
-                        Log.d("SBMNavigation", "RegisterScreen - Register success callback triggered")
-                    }
-                },
+                                    },
                 authViewModel = authViewModel
             )
         }
@@ -210,8 +177,7 @@ fun SBMNavigation(
                                 popUpTo(Screen.Main.route) { inclusive = true }
                             }
                         } catch (e: Exception) {
-                            Log.e("SBMNavigation", "Logout navigation error", e)
-                        }
+                                                    }
                     }
                 }
             )

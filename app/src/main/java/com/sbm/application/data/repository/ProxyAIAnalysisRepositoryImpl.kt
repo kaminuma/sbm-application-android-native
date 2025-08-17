@@ -1,6 +1,6 @@
 package com.sbm.application.data.repository
 
-import android.util.Log
+// import android.util.Log // Removed for production
 import com.sbm.application.BuildConfig
 import com.sbm.application.data.metrics.AIAnalysisMetrics
 import com.sbm.application.data.metrics.DataSize
@@ -69,11 +69,7 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
                 )
             }
 
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "AI分析リクエスト開始: startDate=${request.startDate}, endDate=${request.endDate}")
-                Log.d(TAG, "設定: focus=${config.analysisFocus.name}, detail=${config.detailLevel.name}, style=${config.responseStyle.name}")
-            }
-
+            
             // リクエストDTO作成
             val requestDto = AIAnalysisRequestDto(
                 startDate = request.startDate,
@@ -132,10 +128,7 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
                                      responseDto.data.recommendations.length
                     )
 
-                    if (BuildConfig.DEBUG) {
-                        Log.d(TAG, "AI分析成功: 処理時間=${processingTime}ms")
-                    }
-
+                    
                     Result.success(responseData)
                 } else {
                     // エラーレスポンスの処理
@@ -152,10 +145,7 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
                         errorMessage = errorMessage
                     )
                     
-                    if (BuildConfig.DEBUG) {
-                        Log.w(TAG, "AI分析エラー: $errorMessage")
-                    }
-                    
+                                        
                     Result.success(
                         AIInsightResponse(
                             success = false,
@@ -176,31 +166,19 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
         } catch (e: UnknownHostException) {
             val elapsedMs = System.currentTimeMillis() - startTime
             recordFailureMetrics(e, "UnknownHostException", elapsedMs, request, dataSize)
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "ネットワーク接続エラー", e)
-            }
-            Result.failure(AIAnalysisError.NetworkError("インターネット接続を確認してください"))
+                        Result.failure(AIAnalysisError.NetworkError("インターネット接続を確認してください"))
         } catch (e: SocketTimeoutException) {
             val elapsedMs = System.currentTimeMillis() - startTime
             recordFailureMetrics(e, "SocketTimeoutException", elapsedMs, request, dataSize)
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "通信タイムアウト", e)
-            }
-            Result.failure(AIAnalysisError.NetworkError("通信タイムアウトが発生しました。しばらく待ってから再試行してください"))
+                        Result.failure(AIAnalysisError.NetworkError("通信タイムアウトが発生しました。しばらく待ってから再試行してください"))
         } catch (e: IOException) {
             val elapsedMs = System.currentTimeMillis() - startTime
             recordFailureMetrics(e, "IOException", elapsedMs, request, dataSize)
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "IO例外", e)
-            }
-            Result.failure(AIAnalysisError.NetworkError("ネットワークエラーが発生しました: ${e.message}"))
+                        Result.failure(AIAnalysisError.NetworkError("ネットワークエラーが発生しました: ${e.message}"))
         } catch (e: Exception) {
             val elapsedMs = System.currentTimeMillis() - startTime
             recordFailureMetrics(e, "UnexpectedException", elapsedMs, request, dataSize)
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "予期しないエラー", e)
-            }
-            Result.failure(AIAnalysisError.fromThrowable(e))
+                        Result.failure(AIAnalysisError.fromThrowable(e))
         }
     }
 
@@ -285,10 +263,7 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
             else -> AIAnalysisError.ApiRequestError("API呼び出しエラー: $message ($code)")
         }
 
-        if (BuildConfig.DEBUG) {
-            Log.e(TAG, "HTTP エラー: $code - $message")
-        }
-
+        
         return Result.failure(error)
     }
 

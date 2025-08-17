@@ -1,6 +1,6 @@
 package com.sbm.application.presentation.screen.auth
 
-import android.util.Log
+// import android.util.Log // Removed for production
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,10 +41,7 @@ fun RegisterScreen(
     
     LaunchedEffect(uiState.registrationSuccess) {
         if (uiState.registrationSuccess) {
-            if (BuildConfig.DEBUG) {
-                Log.d("RegisterScreen", "Registration successful, navigating to login")
-            }
-            // TODO: ここでSnackbarやToastで「登録が完了しました」メッセージを表示
+                        // TODO: ここでSnackbarやToastで「登録が完了しました」メッセージを表示
             authViewModel.clearRegistrationSuccess()
             onNavigateToLogin()
         }
@@ -281,10 +278,7 @@ fun RegisterScreen(
                     // 新規登録ボタン
                     Button(
                         onClick = {
-                            if (BuildConfig.DEBUG) {
-                                Log.d("RegisterScreen", "Register button clicked")
-                            }
-                            authViewModel.register(name, email, password, confirmPassword)
+                                                        authViewModel.register(name, email, password, confirmPassword)
                         },
                         modifier = Modifier
                             .fillMaxWidth()

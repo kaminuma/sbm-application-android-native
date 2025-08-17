@@ -1,6 +1,6 @@
 package com.sbm.application.presentation.viewmodel
 
-import android.util.Log
+// import android.util.Log // Removed for production
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sbm.application.BuildConfig
@@ -32,9 +32,6 @@ class AuthViewModel @Inject constructor(
             
             authRepository.login(username, password)
                 .onSuccess { (token, userId) ->
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthViewModel", "Login success: [TOKEN_REDACTED], userId=$userId")
-                    }
                     
                     // 認証状態を段階的に更新
                     _uiState.value = _uiState.value.copy(
@@ -49,16 +46,8 @@ class AuthViewModel @Inject constructor(
                         isAuthenticated = true,
                         user = User(id = userId, username = username, email = "")
                     )
-                    
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthViewModel", "Auth state updated: isAuthenticated=true")
-                        Log.d("AuthViewModel", "Final UI State: ${_uiState.value}")
-                    }
                 }
                 .onFailure { error ->
-                    if (BuildConfig.DEBUG) {
-                        Log.e("AuthViewModel", "Login failed: ${error.message}")
-                    }
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isAuthenticated = false,
@@ -91,9 +80,6 @@ class AuthViewModel @Inject constructor(
             
             authRepository.register(username, email, password)
                 .onSuccess { (_, _) ->
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthViewModel", "Register success")
-                    }
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isAuthenticated = false,  // 自動ログインしない
@@ -101,9 +87,6 @@ class AuthViewModel @Inject constructor(
                         error = null,
                         registrationSuccess = true  // 登録成功フラグを追加
                     )
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthViewModel", "Registration completed successfully")
-                    }
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -116,9 +99,6 @@ class AuthViewModel @Inject constructor(
     
     fun logout() {
         viewModelScope.launch {
-            if (BuildConfig.DEBUG) {
-                Log.d("AuthViewModel", "Logout started")
-            }
             
             // ローディング状態開始
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -128,13 +108,7 @@ class AuthViewModel @Inject constructor(
             if (token != null) {
                 try {
                     authRepository.logout(token)
-                    if (BuildConfig.DEBUG) {
-                        Log.d("AuthViewModel", "Server logout completed")
-                    }
                 } catch (e: Exception) {
-                    if (BuildConfig.DEBUG) {
-                        Log.e("AuthViewModel", "Server logout failed: ${e.message}")
-                    }
                     // サーバーのログアウトが失敗してもローカル状態はクリア
                 }
             }
@@ -150,10 +124,6 @@ class AuthViewModel @Inject constructor(
                 user = null,
                 error = null
             )
-            
-            if (BuildConfig.DEBUG) {
-                Log.d("AuthViewModel", "Logout completed successfully")
-            }
         }
     }
     
@@ -167,18 +137,8 @@ class AuthViewModel @Inject constructor(
     
     private fun checkAuthStatus() {
         viewModelScope.launch {
-            if (BuildConfig.DEBUG) {
-                Log.d("AuthViewModel", "Checking initial auth status...")
-            }
             val isLoggedIn = authRepository.isLoggedIn()
-            val storedToken = authRepository.getStoredToken()
             val storedUserId = authRepository.getStoredUserId()
-            
-            if (BuildConfig.DEBUG) {
-                Log.d("AuthViewModel", "Initial auth check: isLoggedIn=$isLoggedIn")
-                Log.d("AuthViewModel", "Stored token: ${if (storedToken != null) "[REDACTED]" else "null"}")
-                Log.d("AuthViewModel", "Stored userId: $storedUserId")
-            }
             
             _uiState.value = _uiState.value.copy(isAuthenticated = isLoggedIn)
             

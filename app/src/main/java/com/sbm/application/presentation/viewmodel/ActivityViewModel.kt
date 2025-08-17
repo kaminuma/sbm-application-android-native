@@ -41,13 +41,11 @@ class ActivityViewModel @Inject constructor(
             
             activityRepository.getActivities()
                 .onSuccess { activities ->
-                    android.util.Log.d("ActivityViewModel", "loadActivities: Success - loaded ${activities.size} activities")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         activities = activities,
                         networkError = null
                     )
-                    android.util.Log.d("ActivityViewModel", "loadActivities: UI state updated with ${activities.size} activities")
                 }
                 .onFailure { error ->
                     val networkError = if (error is NetworkError) error else null
@@ -85,7 +83,6 @@ class ActivityViewModel @Inject constructor(
     
     fun createActivity(title: String, contents: String?, start: String, end: String, date: String, category: String, categorySub: String?) {
         viewModelScope.launch {
-            android.util.Log.d("ActivityViewModel", "createActivity: Starting API call")
             
             // ローディング表示
             _uiState.value = _uiState.value.copy(
@@ -96,12 +93,10 @@ class ActivityViewModel @Inject constructor(
             // 直接API呼び出し
             activityRepository.createActivity(title, contents, start, end, date, category, categorySub)
                 .onSuccess { _ ->
-                    android.util.Log.d("ActivityViewModel", "createActivity: API Success - reloading activities")
                     // API成功後にデータを再取得
                     loadActivities()
                 }
                 .onFailure { error ->
-                    android.util.Log.e("ActivityViewModel", "createActivity: API Error - ${error.message}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error.message ?: "エラーが発生しました"
@@ -112,7 +107,6 @@ class ActivityViewModel @Inject constructor(
     
     fun updateActivity(activityId: Long, title: String, contents: String?, start: String, end: String, date: String, category: String, categorySub: String?) {
         viewModelScope.launch {
-            android.util.Log.d("ActivityViewModel", "updateActivity: Starting API call")
             
             // ローディング表示
             _uiState.value = _uiState.value.copy(
@@ -123,12 +117,10 @@ class ActivityViewModel @Inject constructor(
             // 直接API呼び出し
             activityRepository.updateActivity(activityId, title, contents, start, end, date, category, categorySub)
                 .onSuccess { _ ->
-                    android.util.Log.d("ActivityViewModel", "updateActivity: API Success - reloading activities")
                     // API成功後にデータを再取得
                     loadActivities()
                 }
                 .onFailure { error ->
-                    android.util.Log.e("ActivityViewModel", "updateActivity: API Error - ${error.message}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error.message ?: "エラーが発生しました"
@@ -139,7 +131,6 @@ class ActivityViewModel @Inject constructor(
     
     fun deleteActivity(activityId: Long) {
         viewModelScope.launch {
-            android.util.Log.d("ActivityViewModel", "deleteActivity: Starting API call")
             
             // ローディング表示
             _uiState.value = _uiState.value.copy(
@@ -150,12 +141,10 @@ class ActivityViewModel @Inject constructor(
             // 直接API呼び出し
             activityRepository.deleteActivity(activityId)
                 .onSuccess {
-                    android.util.Log.d("ActivityViewModel", "deleteActivity: API Success - reloading activities")
                     // API成功後にデータを再取得
                     loadActivities()
                 }
                 .onFailure { error ->
-                    android.util.Log.e("ActivityViewModel", "deleteActivity: API Error - ${error.message}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = error.message ?: "エラーが発生しました"

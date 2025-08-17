@@ -2,7 +2,7 @@ package com.sbm.application.data.metrics
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+// import android.util.Log // Removed for production
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.sbm.application.BuildConfig
@@ -73,11 +73,7 @@ class AIAnalysisMetrics @Inject constructor(
         // 永続化
         saveMetricsToStorage(currentList)
 
-        // デバッグログ出力
-        if (BuildConfig.DEBUG) {
-            logMetric(metric)
-        }
-    }
+            }
 
     /**
      * 成功した分析のメトリクスを記録
@@ -176,10 +172,7 @@ class AIAnalysisMetrics @Inject constructor(
         _currentMetrics.value = emptyList()
         preferences.edit().clear().apply()
         
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "メトリクスをクリアしました")
-        }
-    }
+            }
 
     /**
      * CSVエクスポート用のデータを取得
@@ -217,10 +210,7 @@ class AIAnalysisMetrics @Inject constructor(
             val metrics = gson.fromJson<List<AnalysisMetric>>(json, type) ?: emptyList()
             _currentMetrics.value = metrics.take(MAX_STORED_METRICS)
         } catch (e: Exception) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "メトリクス読み込みエラー", e)
-            }
-        }
+                    }
     }
 
     private fun saveMetricsToStorage(metrics: List<AnalysisMetric>) {
@@ -230,29 +220,10 @@ class AIAnalysisMetrics @Inject constructor(
                 .putString("metrics", json)
                 .apply()
         } catch (e: Exception) {
-            if (BuildConfig.DEBUG) {
-                Log.e(TAG, "メトリクス保存エラー", e)
-            }
-        }
+                    }
     }
 
-    private fun logMetric(metric: AnalysisMetric) {
-        val timestamp = dateFormat.format(Date(metric.timestamp))
-        when (metric.result) {
-            is AnalysisResult.Success -> {
-                Log.d(TAG, "分析成功: ${metric.implementationType.name} | " +
-                          "時間: ${metric.result.processingTimeMs}ms | " +
-                          "データサイズ: ${metric.requestData.dataSize.totalItems}件 | " +
-                          "日時: $timestamp")
-            }
-            is AnalysisResult.Failure -> {
-                Log.w(TAG, "分析失敗: ${metric.implementationType.name} | " +
-                          "エラー: ${metric.result.errorType} | " +
-                          "時間: ${metric.result.processingTimeMs}ms | " +
-                          "日時: $timestamp")
-            }
-        }
-    }
+    // logMetric function removed for production
 
     private fun getCommonErrors(metrics: List<AnalysisMetric>): List<ErrorCount> {
         return metrics

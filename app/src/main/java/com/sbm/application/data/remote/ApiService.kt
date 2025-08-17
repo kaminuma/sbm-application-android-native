@@ -1,6 +1,7 @@
 package com.sbm.application.data.remote
 
 import com.sbm.application.data.remote.dto.AuthDto
+import com.sbm.application.data.remote.dto.LoginResponse
 import com.sbm.application.data.remote.dto.ActivityDto
 import com.sbm.application.data.remote.dto.MoodDto
 import com.sbm.application.data.remote.dto.AIAnalysisRequestDto
@@ -20,6 +21,12 @@ interface ApiService {
     
     @POST("auth/refresh")
     suspend fun refreshToken(@Body refreshRequest: AuthDto.RefreshTokenRequest): Response<AuthDto.RefreshTokenResponse>
+    
+    @FormUrlEncoded
+    @POST("auth/oauth2/session")
+    suspend fun getOAuth2Session(
+        @Field("sessionId") sessionId: String
+    ): Response<LoginResponse>
     
     // Activities
     @GET("activities")
