@@ -113,7 +113,7 @@ fun CalendarScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 16.dp) // 緑・青テーマに合わせてゆったりと
+                .padding(horizontal = 8.dp, vertical = 16.dp) // 緑・青テーマに合わせてゆったりと
         ) {
             // 表示切替タブ
             Row(
@@ -505,7 +505,7 @@ fun WeeklyCalendarView(
         Row(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
-                    .width(60.dp)
+                    .width(40.dp)
                     .height(48.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -547,7 +547,7 @@ fun WeeklyCalendarView(
         ) {
             Box(
                 modifier = Modifier
-                    .width(60.dp)
+                    .width(40.dp)
                     .height(48.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -611,7 +611,7 @@ fun WeeklyCalendarView(
             // 時間軸ラベル列
             Column(
                 modifier = Modifier
-                    .width(60.dp)
+                    .width(40.dp)
                     .fillMaxHeight()
             ) {
                 for (hour in startHour until endHour) {
@@ -640,7 +640,7 @@ fun WeeklyCalendarView(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 60.dp)
+                    .padding(start = 40.dp)
             ) {
                 weekDays.forEach { date ->
                     val dateString = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
