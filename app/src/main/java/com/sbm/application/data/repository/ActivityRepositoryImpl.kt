@@ -1,7 +1,6 @@
 package com.sbm.application.data.repository
 
-// import android.util.Log // Removed for production
-import com.sbm.application.BuildConfig
+import com.sbm.application.config.ApiConfig
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.dto.ActivityDto
 import com.sbm.application.data.network.NetworkError
@@ -93,8 +92,7 @@ class ActivityRepositoryImpl @Inject constructor(
                 val response = apiService.createActivity("Bearer $token", request)
                 
                 if (response.isSuccessful) {
-                    // ResponseBodyからプレーンテキストを取得
-                    val responseBodyString = response.body()?.string() ?: ""
+                    // レスポンス成功
                 } else {
                     throw Exception("Failed to create activity: ${response.message()}")
                 }
@@ -147,9 +145,7 @@ class ActivityRepositoryImpl @Inject constructor(
                     val response = apiService.updateActivity("Bearer $token", activityId, request)
                     
                     if (response.isSuccessful) {
-                        // ResponseBodyから空のレスポンスを処理
-                        val responseBodyString = response.body()?.string() ?: ""
-                        Unit // 更新成功
+                        // 更新成功
                     } else {
                         throw Exception("Failed to update activity: ${response.message()}")
                     }
@@ -189,12 +185,6 @@ class ActivityRepositoryImpl @Inject constructor(
                 val response = apiService.deleteActivity("Bearer $token", id)
                 
                 if (response.isSuccessful) {
-                    // ResponseBodyから空のレスポンスを処理
-                    val responseBodyString = try {
-                        response.body()?.string() ?: ""
-                    } catch (e: Exception) {
-                        ""
-                    }
                     Result.success(Unit)
                 } else {
                     Result.failure(Exception("Failed to delete activity: HTTP ${response.code()} - ${response.message()}"))

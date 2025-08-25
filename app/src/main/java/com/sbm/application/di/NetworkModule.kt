@@ -1,11 +1,12 @@
 package com.sbm.application.di
 
 import android.content.Context
-import com.sbm.application.BuildConfig
+import com.sbm.application.config.ApiConfig
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.AuthInterceptor
 import com.sbm.application.data.network.NetworkMonitor
 import com.sbm.application.data.network.NetworkUtil
+import com.sbm.application.data.network.AIRetryInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,7 +39,7 @@ object NetworkModule {
     @Singleton
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) {
+            level = if (com.sbm.application.BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
             } else {
                 HttpLoggingInterceptor.Level.NONE
@@ -48,12 +49,20 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideAIRetryInterceptor(networkUtil: NetworkUtil): AIRetryInterceptor {
+        return AIRetryInterceptor(networkUtil)
+    }
+
+    @Provides
+    @Singleton
     fun provideOkHttpClient(
         loggingInterceptor: HttpLoggingInterceptor,
-        authInterceptor: AuthInterceptor
+        authInterceptor: AuthInterceptor,
+        aiRetryInterceptor: AIRetryInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(aiRetryInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -65,7 +74,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BuildConfig.API_BASE_URL)
+            .baseUrl(ApiConfig.API_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

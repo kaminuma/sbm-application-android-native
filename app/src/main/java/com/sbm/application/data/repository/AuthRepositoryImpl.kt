@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.sbm.application.BuildConfig
+import com.sbm.application.config.ApiConfig
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.dto.AuthDto
 import com.sbm.application.data.remote.dto.LoginResponse
@@ -56,7 +56,6 @@ class AuthRepositoryImpl @Inject constructor(
                         Result.failure(Exception("ログインの応答が無効です: ユーザーデータが見つかりません"))
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
                     Result.failure(Exception("ログインに失敗しました: ${response.message()} (${response.code()})"))
                 }
             } catch (e: Exception) {

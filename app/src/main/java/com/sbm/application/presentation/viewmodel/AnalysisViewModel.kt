@@ -8,7 +8,12 @@ import com.sbm.application.domain.model.AIInsight
 import com.sbm.application.domain.repository.ActivityRepository
 import com.sbm.application.domain.repository.AIConfigRepository
 import com.sbm.application.domain.repository.MoodRepository
+import com.sbm.application.domain.repository.AIUsageRepository
 import com.sbm.application.domain.usecase.GenerateAIInsightUseCase
+import com.sbm.application.domain.usecase.GetAIUsageUseCase
+import com.sbm.application.domain.model.AIUsageInfo
+import com.sbm.application.domain.model.RateLimitExceededException
+import com.sbm.application.domain.model.AIAnalysisError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +51,14 @@ data class AnalysisUiState(
     val aiError: String? = null,
     val canGenerateAI: Boolean = false,
     val selectedStartDate: String = "",
-    val selectedEndDate: String = ""
+    val selectedEndDate: String = "",
+    
+    // AI利用状況
+    val aiUsageInfo: AIUsageInfo? = null,
+    val isUsageLoading: Boolean = false,
+    val usageError: String? = null,
+    val showRateLimitDialog: Boolean = false,
+    val showLowUsageWarning: Boolean = false
 )
 
 @HiltViewModel
@@ -54,7 +66,8 @@ class AnalysisViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val moodRepository: MoodRepository,
     private val generateAIInsightUseCase: GenerateAIInsightUseCase,
-    private val aiConfigRepository: AIConfigRepository
+    private val aiConfigRepository: AIConfigRepository,
+    private val getAIUsageUseCase: GetAIUsageUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalysisUiState())
@@ -235,6 +248,11 @@ class AnalysisViewModel @Inject constructor(
     
     // AI機能関連メソッド
     fun generateAIInsight() {
+        // 新しい使用状況チェック付きメソッドに転送
+        generateAIInsightWithUsageCheck()
+    }
+
+    private fun generateAIInsightWithUsageCheck() {
         val currentState = _uiState.value
         
         viewModelScope.launch {
@@ -263,6 +281,8 @@ class AnalysisViewModel @Inject constructor(
                         aiInsight = response.data,
                         aiError = if (!response.success) response.error else null
                     )
+                    // AI分析成功後、利用状況を再取得
+                    loadUsageInfo()
                 }.onFailure { exception ->
                     _uiState.value = currentState.copy(
                         isAiLoading = false,
@@ -284,6 +304,102 @@ class AnalysisViewModel @Inject constructor(
             aiInsight = null,
             aiError = null
         )
+    }
+    
+    // AI利用状況関連メソッド
+    fun loadUsageInfo() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUsageLoading = true, usageError = null)
+            
+            val result = getAIUsageUseCase.execute()
+            result.onSuccess { usageInfo ->
+                _uiState.value = _uiState.value.copy(
+                    isUsageLoading = false,
+                    aiUsageInfo = usageInfo,
+                    usageError = null
+                )
+            }.onFailure { exception ->
+                _uiState.value = _uiState.value.copy(
+                    isUsageLoading = false,
+                    usageError = exception.message,
+                    aiUsageInfo = null
+                )
+            }
+        }
+    }
+    
+    private fun performAIInsightGeneration() {
+        val currentState = _uiState.value
+        
+        viewModelScope.launch {
+            _uiState.value = currentState.copy(
+                isAiLoading = true,
+                aiError = null
+            )
+            
+            try {
+                val aiConfig = aiConfigRepository.getConfig()
+                val dateRange = getCurrentDateRange()
+                val result = generateAIInsightUseCase.execute(
+                    startDate = currentState.selectedStartDate.ifEmpty { dateRange.first },
+                    endDate = currentState.selectedEndDate.ifEmpty { dateRange.second },
+                    activities = currentState.activities,
+                    moodRecords = currentState.moodRecords,
+                    config = aiConfig
+                )
+                
+                result.onSuccess { response ->
+                    _uiState.value = _uiState.value.copy(
+                        isAiLoading = false,
+                        aiInsight = response.data,
+                        aiError = if (!response.success) response.error else null
+                    )
+                    // AI分析成功後、利用状況を再取得して最新の残り回数を表示
+                    loadUsageInfo()
+                }.onFailure { exception ->
+                    when (exception) {
+                        is RateLimitExceededException -> {
+                            _uiState.value = _uiState.value.copy(
+                                isAiLoading = false,
+                                showRateLimitDialog = true,
+                                aiUsageInfo = exception.usageInfo ?: _uiState.value.aiUsageInfo
+                            )
+                        }
+                        is AIAnalysisError.RateLimitExceeded -> {
+                            _uiState.value = _uiState.value.copy(
+                                isAiLoading = false,
+                                showRateLimitDialog = true
+                            )
+                        }
+                        else -> {
+                            _uiState.value = _uiState.value.copy(
+                                isAiLoading = false,
+                                aiError = exception.message
+                            )
+                        }
+                    }
+                }
+                
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isAiLoading = false,
+                    aiError = e.message
+                )
+            }
+        }
+    }
+    
+    fun dismissRateLimitDialog() {
+        _uiState.value = _uiState.value.copy(showRateLimitDialog = false)
+    }
+    
+    fun dismissLowUsageWarning() {
+        _uiState.value = _uiState.value.copy(showLowUsageWarning = false)
+    }
+    
+    fun proceedWithLowUsage() {
+        _uiState.value = _uiState.value.copy(showLowUsageWarning = false)
+        performAIInsightGeneration()
     }
     
     fun setDateRange(startDate: String, endDate: String) {

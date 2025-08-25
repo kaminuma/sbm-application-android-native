@@ -68,3 +68,7 @@
     public void println(%);
     public void println(**);
 }
+
+# Remove debug classes in release builds
+-keep class !com.sbm.application.presentation.debug.**,
+          com.sbm.application.** { *; }

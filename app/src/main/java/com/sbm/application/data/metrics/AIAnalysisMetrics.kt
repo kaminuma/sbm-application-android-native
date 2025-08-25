@@ -2,10 +2,9 @@ package com.sbm.application.data.metrics
 
 import android.content.Context
 import android.content.SharedPreferences
-// import android.util.Log // Removed for production
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.sbm.application.BuildConfig
+import com.sbm.application.config.ApiConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -4,6 +4,7 @@ data class AIInsightResponse(
     val success: Boolean,
     val data: AIInsight?,
     val error: String?,
-    val metadata: ResponseMetadata? = null
+    val metadata: ResponseMetadata? = null,
+    val usageInfo: AIUsageInfo? = null
 )
 

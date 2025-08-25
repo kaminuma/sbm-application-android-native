@@ -1,7 +1,6 @@
 package com.sbm.application.data.repository
 
-// import android.util.Log // Removed for production
-import com.sbm.application.BuildConfig
+import com.sbm.application.config.ApiConfig
 import com.sbm.application.data.metrics.AIAnalysisMetrics
 import com.sbm.application.data.metrics.DataSize
 import com.sbm.application.data.metrics.ImplementationType
@@ -112,7 +111,8 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
                             processingTimeMs = processingTime,
                             tokensUsed = null, // バックエンドから提供されていない
                             remainingQuota = null
-                        )
+                        ),
+                        usageInfo = responseDto.usageInfo // usage_infoを追加
                     )
 
                     // メトリクス記録（成功）
@@ -150,7 +150,8 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
                         AIInsightResponse(
                             success = false,
                             data = null,
-                            error = errorMessage
+                            error = errorMessage,
+                            usageInfo = responseDto?.usageInfo // エラー時でもusage_infoを含める
                         )
                     )
                 }
@@ -258,7 +259,11 @@ class ProxyAIAnalysisRepositoryImpl @Inject constructor(
             401 -> AIAnalysisError.InvalidApiKey
             403 -> AIAnalysisError.ApiRequestError("API利用権限がありません")
             404 -> AIAnalysisError.ApiRequestError("指定期間のデータが見つかりません")
-            429 -> AIAnalysisError.RateLimitExceeded
+            429 -> {
+                // 429エラーの場合は特別な処理
+                // エラーレスポンスボディからusage_infoを取得しようと試みる
+                AIAnalysisError.RateLimitExceeded
+            }
             500, 502, 503 -> AIAnalysisError.NetworkError("サーバーに一時的な問題が発生しています。しばらく待ってから再試行してください")
             else -> AIAnalysisError.ApiRequestError("API呼び出しエラー: $message ($code)")
         }

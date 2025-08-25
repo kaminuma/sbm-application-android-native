@@ -12,7 +12,7 @@ sealed class AIAnalysisError : Exception() {
     }
     
     object RateLimitExceeded : AIAnalysisError() {
-        override val message: String = "利用制限に達しました。しばらく後でお試しください"
+        override val message: String = "利用制限に達しました。日付が変わって再度お試しください"
     }
     
     object InvalidApiKey : AIAnalysisError() {

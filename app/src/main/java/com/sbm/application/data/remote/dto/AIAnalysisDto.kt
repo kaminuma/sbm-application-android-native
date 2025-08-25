@@ -1,6 +1,7 @@
 package com.sbm.application.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
+import com.sbm.application.domain.model.AIUsageInfo
 
 /**
  * バックエンドAPI経由でのAI分析リクエスト用DTO
@@ -29,7 +30,9 @@ data class AIAnalysisRequestDto(
 data class AIAnalysisResponseDto(
     val success: Boolean,
     val error: String?,
-    val data: AIInsightData?
+    val data: AIInsightData?,
+    @SerializedName("usage_info")
+    val usageInfo: AIUsageInfo? = null
 )
 
 /**
