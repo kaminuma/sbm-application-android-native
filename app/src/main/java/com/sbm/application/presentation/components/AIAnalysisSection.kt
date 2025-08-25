@@ -8,7 +8,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Info
@@ -26,6 +25,7 @@ import com.sbm.application.domain.model.AIInsight
 @Composable
 fun AIAnalysisSection(
     canGenerate: Boolean,
+    canUseToday: Boolean = true,
     isLoading: Boolean,
     insight: AIInsight?,
     error: String?,
@@ -78,11 +78,19 @@ fun AIAnalysisSection(
             }
             
             AnimatedVisibility(
-                visible = !isLoading && error == null && insight == null && canGenerate,
+                visible = !isLoading && error == null && insight == null && canGenerate && canUseToday,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
                 AIGeneratePrompt(onGenerateClick)
+            }
+            
+            AnimatedVisibility(
+                visible = !isLoading && error == null && insight == null && canGenerate && !canUseToday,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                AIRateLimitMessage()
             }
             
             AnimatedVisibility(
@@ -108,23 +116,12 @@ private fun AIAnalysisHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "✨ AI ライフガイド 🤖",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        Text(
+            text = "✨ AI ライフガイド 🤖",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         
         Row {
             if (insight != null) {
@@ -342,6 +339,47 @@ fun AIInsufficientDataMessage(
                 text = "AI分析を行うには、気分記録または活動記録が必要です。\nまずはデータを記録してみましょう。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun AIRateLimitMessage(
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "⏰",
+                style = MaterialTheme.typography.headlineLarge
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = "利用制限に達しました",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "今日のAI分析の利用回数が上限に達しています。\n明日になると再度ご利用いただけます。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
                 textAlign = TextAlign.Center
             )
         }

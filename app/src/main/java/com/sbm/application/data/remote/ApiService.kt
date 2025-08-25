@@ -6,6 +6,7 @@ import com.sbm.application.data.remote.dto.ActivityDto
 import com.sbm.application.data.remote.dto.MoodDto
 import com.sbm.application.data.remote.dto.AIAnalysisRequestDto
 import com.sbm.application.data.remote.dto.AIAnalysisResponseDto
+import com.sbm.application.domain.model.AIUsageInfo
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -87,4 +88,22 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: AIAnalysisRequestDto
     ): Response<AIAnalysisResponseDto>
+    
+    // AI Usage Information
+    @GET("ai/usage")
+    suspend fun getAIUsage(
+        @Header("Authorization") token: String
+    ): Response<AIUsageInfo>
+    
+    // Debug endpoints (for development)
+    @GET("ai/debug/limits")
+    suspend fun getDebugLimits(
+        @Header("Authorization") token: String
+    ): Response<Map<String, Any>>
+    
+    @POST("ai/debug/reset/{userId}")
+    suspend fun resetUserLimits(
+        @Path("userId") userId: Int,
+        @Header("Authorization") token: String
+    ): Response<Map<String, Any>>
 }

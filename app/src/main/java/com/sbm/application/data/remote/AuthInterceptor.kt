@@ -2,10 +2,9 @@ package com.sbm.application.data.remote
 
 import android.content.Context
 import android.content.SharedPreferences
-// import android.util.Log // Removed for production
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.sbm.application.BuildConfig
+import com.sbm.application.config.ApiConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.Interceptor
 import okhttp3.Response

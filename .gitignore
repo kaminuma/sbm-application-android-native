@@ -57,3 +57,5 @@ google-services.json
 
 # docs
 docs/
+# ローカル開発用設定ファイル
+app/src/debug/res/

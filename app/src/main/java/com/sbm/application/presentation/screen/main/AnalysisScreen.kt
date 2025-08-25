@@ -25,6 +25,9 @@ import com.sbm.application.presentation.components.CategoryChart
 import com.sbm.application.presentation.components.MoodTrendChart
 import com.sbm.application.presentation.components.StatsOverview
 import com.sbm.application.presentation.components.AIAnalysisSection
+import com.sbm.application.presentation.components.AIUsageDisplay
+import com.sbm.application.presentation.components.RateLimitDialog
+import com.sbm.application.presentation.components.LowUsageWarningDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +98,9 @@ fun AnalysisScreen(
         val weekAgo = today.minusWeeks(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         val todayStr = today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         viewModel.setDateRange(weekAgo, todayStr)
+        
+        // 使用状況も初期ロード
+        viewModel.loadUsageInfo()
     }
     
     Box(modifier = Modifier.fillMaxSize()) {
@@ -154,10 +160,19 @@ fun AnalysisScreen(
                     )
                 }
                 
+                // AI利用状況表示
+                item {
+                    AIUsageDisplay(
+                        usageInfo = uiState.aiUsageInfo,
+                        showDetailed = false
+                    )
+                }
+                
                 // AI分析セクション - 一番上に配置
                 item {
                     AIAnalysisSection(
                         canGenerate = uiState.canGenerateAI,
+                        canUseToday = uiState.aiUsageInfo?.canUseToday ?: true,
                         isLoading = uiState.isAiLoading,
                         insight = uiState.aiInsight,
                         error = uiState.aiError,
@@ -317,6 +332,25 @@ fun AnalysisScreen(
                 viewModel.loadAnalysisData(startDate, endDate)
             }
         )
+    }
+    
+    // 制限到達ダイアログ
+    if (uiState.showRateLimitDialog) {
+        RateLimitDialog(
+            usageInfo = uiState.aiUsageInfo,
+            onDismiss = { viewModel.dismissRateLimitDialog() }
+        )
+    }
+    
+    // 利用制限警告ダイアログ
+    if (uiState.showLowUsageWarning) {
+        uiState.aiUsageInfo?.let { usageInfo ->
+            LowUsageWarningDialog(
+                usageInfo = usageInfo,
+                onDismiss = { viewModel.dismissLowUsageWarning() },
+                onProceed = { viewModel.proceedWithLowUsage() }
+            )
+        }
     }
 }
 

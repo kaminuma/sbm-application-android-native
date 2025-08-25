@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- 本番API用 - HTTPS強制 -->
+    <!-- デバッグビルド用設定 - より包括的にHTTP通信を許可 -->
+    <debug-overrides>
+        <!-- デバッグ時はすべてのHTTP通信を許可 -->
+        <base-config cleartextTrafficPermitted="true">
+            <trust-anchors>
+                <certificates src="system"/>
+                <certificates src="user"/>
+            </trust-anchors>
+        </base-config>
+    </debug-overrides>
+    
+    <!-- 本番環境用設定 -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api.sbm-app.com</domain>
-    </domain-config>
-    
-    <!-- デバッグ用（開発時のみ） -->
-    <debug-overrides>
         <trust-anchors>
             <certificates src="system"/>
         </trust-anchors>
-    </debug-overrides>
+    </domain-config>
     
-    <!-- デフォルトでHTTP通信を禁止 -->
+    <!-- デフォルト設定（本番ビルド用） -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system"/>

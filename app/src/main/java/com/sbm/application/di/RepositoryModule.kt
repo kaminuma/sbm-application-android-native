@@ -4,10 +4,12 @@ import com.sbm.application.data.repository.AuthRepositoryImpl
 import com.sbm.application.data.repository.ActivityRepositoryImpl
 import com.sbm.application.data.repository.MoodRepositoryImpl
 import com.sbm.application.data.repository.AIConfigRepositoryImpl
+import com.sbm.application.data.repository.AIUsageRepositoryImpl
 import com.sbm.application.domain.repository.AuthRepository
 import com.sbm.application.domain.repository.ActivityRepository
 import com.sbm.application.domain.repository.MoodRepository
 import com.sbm.application.domain.repository.AIConfigRepository
+import com.sbm.application.domain.repository.AIUsageRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -41,6 +43,11 @@ abstract class RepositoryModule {
     abstract fun bindAIConfigRepository(
         impl: AIConfigRepositoryImpl
     ): AIConfigRepository
-
+    
+    @Binds
+    @Singleton
+    abstract fun bindAIUsageRepository(
+        impl: AIUsageRepositoryImpl
+    ): AIUsageRepository
 
 }

@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.sbm.application.BuildConfig
+import com.sbm.application.config.ApiConfig
 import com.sbm.application.R
 import com.sbm.application.presentation.viewmodel.AuthViewModel
 import com.sbm.application.presentation.theme.CuteDesignSystem
@@ -286,7 +286,7 @@ fun LoginScreen(
                             )
                             
                             // モバイルアプリ識別のためのパラメータを追加
-                            val loginUrl = "${BuildConfig.BACKEND_URL}/oauth2/authorization/google?mobile=true"
+                            val loginUrl = "${ApiConfig.BACKEND_URL}/oauth2/authorization/google?mobile=true"
                             customTabsIntent.launchUrl(context, Uri.parse(loginUrl))
                         },
                         modifier = Modifier
