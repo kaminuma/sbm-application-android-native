@@ -1,6 +1,6 @@
 package com.sbm.application.presentation.viewmodel
 
-// import android.util.Log // Removed for production
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sbm.application.BuildConfig
@@ -19,6 +19,17 @@ class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
     
+    private fun debugLog(message: String) {
+        // BuildConfig.DEBUGの安全な参照（リリースビルド対応）
+        try {
+            if (BuildConfig.DEBUG) {
+                Log.d("AuthViewModel", message)
+            }
+        } catch (e: Exception) {
+            // リリースビルドではログを出力しない
+        }
+    }
+    
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
     
@@ -28,32 +39,47 @@ class AuthViewModel @Inject constructor(
     
     fun login(username: String, password: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null, isAuthenticated = false)
-            
-            authRepository.login(username, password)
-                .onSuccess { (token, userId) ->
-                    
-                    // 認証状態を段階的に更新
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = null
-                    )
-                    
-                    // 少し遅延を入れてから認証状態を更新
-                    kotlinx.coroutines.delay(50)
-                    
-                    _uiState.value = _uiState.value.copy(
-                        isAuthenticated = true,
-                        user = User(id = userId, username = username, email = "")
-                    )
-                }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isAuthenticated = false,
-                        error = error.message ?: "ログインエラーが発生しました"
-                    )
-                }
+            try {
+                debugLog("Login attempt started for user: $username")
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null, isAuthenticated = false)
+                
+                val loginResult = authRepository.login(username, password)
+                
+                loginResult
+                    .onSuccess { (_, userId) ->
+                        debugLog("Login successful for userId: $userId")
+                        
+                        // 認証状態を段階的に更新
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = null
+                        )
+                        
+                        // 少し遅延を入れてから認証状態を更新
+                        kotlinx.coroutines.delay(100)
+                        
+                        _uiState.value = _uiState.value.copy(
+                            isAuthenticated = true,
+                            user = User(id = userId, username = username, email = "")
+                        )
+                        debugLog("Authentication state updated successfully")
+                    }
+                    .onFailure { error ->
+                        debugLog("Login failed: ${error.message}")
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            isAuthenticated = false,
+                            error = error.message ?: "ログインエラーが発生しました"
+                        )
+                    }
+            } catch (e: Exception) {
+                debugLog("Login exception: ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isAuthenticated = false,
+                    error = "予期しないエラーが発生しました: ${e.message}"
+                )
+            }
         }
     }
     

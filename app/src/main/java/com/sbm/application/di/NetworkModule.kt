@@ -39,9 +39,14 @@ object NetworkModule {
     @Singleton
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
-            level = if (com.sbm.application.BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
-            } else {
+            level = try {
+                if (com.sbm.application.BuildConfig.DEBUG) {
+                    HttpLoggingInterceptor.Level.BODY
+                } else {
+                    HttpLoggingInterceptor.Level.NONE
+                }
+            } catch (e: Exception) {
+                // リリースビルドではログを無効化
                 HttpLoggingInterceptor.Level.NONE
             }
         }

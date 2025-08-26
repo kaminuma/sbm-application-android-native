@@ -81,18 +81,52 @@ fun ActivityScreen(
                 }
             } else {
                 LazyColumn {
-                    items(uiState.activities) { activity ->
-                        ActivityItem(
-                            activity = activity,
-                            onEdit = {
-                                activityToEdit = activity
-                                showEditDialog = true
-                            },
-                            onDelete = {
-                                viewModel.deleteActivity(activity.activityId)
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    // 日付でグループ化し、各日付内で時間順にソート（日付は降順、時間は昇順）
+                    val groupedAndSortedActivities = uiState.activities
+                        .sortedWith(compareByDescending<Activity> { it.date }.thenBy { it.start })
+                        .groupBy { it.date }
+                    
+                    groupedAndSortedActivities.forEach { (date, activitiesForDate) ->
+                        // 日付ヘッダー
+                        item {
+                            Text(
+                                text = try {
+                                    val localDate = java.time.LocalDate.parse(date)
+                                    "${localDate.monthValue}月${localDate.dayOfMonth}日 (${
+                                        localDate.dayOfWeek.getDisplayName(
+                                            java.time.format.TextStyle.SHORT,
+                                            java.util.Locale.JAPANESE
+                                        )
+                                    })"
+                                } catch (e: Exception) {
+                                    date
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                            )
+                        }
+                        
+                        // その日のアクティビティ一覧
+                        items(activitiesForDate.sortedBy { it.start }) { activity ->
+                            ActivityItem(
+                                activity = activity,
+                                onEdit = {
+                                    activityToEdit = activity
+                                    showEditDialog = true
+                                },
+                                onDelete = {
+                                    viewModel.deleteActivity(activity.activityId)
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        
+                        // 日付グループ間のスペース
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
                 }
             }
@@ -627,7 +661,7 @@ fun AddActivityDialog(
                     
                     Button(
                         onClick = {
-                            if (title.isNotBlank() && category.isNotBlank() && date.isNotBlank()) {
+                            if (title.isNotBlank() && category.isNotBlank() && date.isNotBlank() && startTime.isBefore(endTime)) {
                                 if (isEditMode && activityToEdit != null && onUpdate != null) {
                                     onUpdate(
                                         activityToEdit.activityId,
@@ -652,7 +686,7 @@ fun AddActivityDialog(
                                 }
                             }
                         },
-                        enabled = title.isNotBlank() && category.isNotBlank() && date.isNotBlank(),
+                        enabled = title.isNotBlank() && category.isNotBlank() && date.isNotBlank() && startTime.isBefore(endTime),
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),

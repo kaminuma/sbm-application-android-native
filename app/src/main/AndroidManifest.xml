@@ -15,6 +15,11 @@
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="31">
         
+        <!-- Google Mobile Ads Application ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
