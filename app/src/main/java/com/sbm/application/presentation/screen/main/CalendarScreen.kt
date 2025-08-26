@@ -113,9 +113,9 @@ fun CalendarScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 16.dp) // 緑・青テーマに合わせてゆったりと
+                .padding(horizontal = 8.dp, vertical = 8.dp) // 縦パディングを半分に削減
         ) {
-            // 表示切替タブ
+            // 表示切替タブ（コンパクト版）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -123,10 +123,10 @@ fun CalendarScreen(
                 FilterChip(
                     selected = !isWeeklyView,
                     onClick = { isWeeklyView = false },
-                    label = { Text("月表示") },
-                    modifier = Modifier.padding(end = 10.dp),
+                    label = { Text("月表示", style = MaterialTheme.typography.bodySmall) }, // フォントサイズ縮小
+                    modifier = Modifier.padding(end = 6.dp), // パディング削減
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF66BB6A), // 優しい緑
+                        selectedContainerColor = Color(0xFF66BB6A),
                         selectedLabelColor = Color.White,
                         containerColor = Color(0xFFF1F8F6),
                         labelColor = Color(0xFF2E7D32)
@@ -135,9 +135,9 @@ fun CalendarScreen(
                 FilterChip(
                     selected = isWeeklyView,
                     onClick = { isWeeklyView = true },
-                    label = { Text("週表示") },
+                    label = { Text("週表示", style = MaterialTheme.typography.bodySmall) }, // フォントサイズ縮小
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF64B5F6), // 優しい青
+                        selectedContainerColor = Color(0xFF64B5F6),
                         selectedLabelColor = Color.White,
                         containerColor = Color(0xFFF0F8FF),
                         labelColor = Color(0xFF1565C0)
@@ -145,35 +145,45 @@ fun CalendarScreen(
                 )
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp)) // スペース半減
             
             if (isWeeklyView) {
-                // 週ナビゲーション
+                // 週ナビゲーション（コンパクト版）
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { currentWeekStart = currentWeekStart.minusWeeks(1) }
+                        onClick = { currentWeekStart = currentWeekStart.minusWeeks(1) },
+                        modifier = Modifier.size(32.dp) // サイズ縮小
                     ) {
-                        Icon(Icons.Default.KeyboardArrowLeft, "前の週")
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft, 
+                            "前の週",
+                            modifier = Modifier.size(20.dp) // アイコンサイズ縮小
+                        )
                     }
                     
                     Text(
                         text = "${currentWeekStart.format(DateTimeFormatter.ofPattern("M月d日"))} - ${currentWeekStart.plusDays(6).format(DateTimeFormatter.ofPattern("M月d日"))}",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyLarge, // titleMedium → bodyLarge
                         fontWeight = FontWeight.Bold
                     )
                     
                     IconButton(
-                        onClick = { currentWeekStart = currentWeekStart.plusWeeks(1) }
+                        onClick = { currentWeekStart = currentWeekStart.plusWeeks(1) },
+                        modifier = Modifier.size(32.dp) // サイズ縮小
                     ) {
-                        Icon(Icons.Default.KeyboardArrowRight, "次の週")
+                        Icon(
+                            Icons.Default.KeyboardArrowRight, 
+                            "次の週",
+                            modifier = Modifier.size(20.dp) // アイコンサイズ縮小
+                        )
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp)) // スペース半減
                 
                 // 週表示カレンダー
                 Card(

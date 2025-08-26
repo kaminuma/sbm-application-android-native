@@ -42,11 +42,23 @@ fun LoginScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     
-    LaunchedEffect(uiState.isAuthenticated) {
-        if (uiState.isAuthenticated) {
-            // 少し遅延を入れて、ナビゲーション処理を確実にする
-            kotlinx.coroutines.delay(200)
-            onLoginSuccess()
+    // より確実な認証状態監視
+    LaunchedEffect(uiState.isAuthenticated, uiState.user) {
+        if (uiState.isAuthenticated && uiState.user != null && !uiState.isLoading) {
+            // 複数の条件を満たす場合のみ画面遷移
+            try {
+                kotlinx.coroutines.delay(300) // より長めの遅延
+                onLoginSuccess()
+            } catch (e: Exception) {
+                // ナビゲーション失敗時のログ
+                try {
+                    if (com.sbm.application.BuildConfig.DEBUG) {
+                        Log.e("LoginScreen", "Navigation failed", e)
+                    }
+                } catch (ex: Exception) {
+                    // リリースビルドではログを出力しない
+                }
+            }
         }
     }
     
@@ -212,6 +224,14 @@ fun LoginScreen(
                     // ログインボタン
                     Button(
                         onClick = {
+                            // ログインボタンクリック時のログ
+                            try {
+                                if (com.sbm.application.BuildConfig.DEBUG) {
+                                    Log.d("LoginScreen", "Login button clicked")
+                                }
+                            } catch (e: Exception) {
+                                // リリースビルドではログを出力しない
+                            }
                             authViewModel.login(username, password)
                         },
                         modifier = Modifier
@@ -335,6 +355,55 @@ fun LoginScreen(
                             "アカウントをお持ちでない方はこちら",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.MD))
+                    
+                    // 利用規約・プライバシーポリシー
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        TextButton(
+                            onClick = {
+                                val customTabsIntent = CustomTabsIntent.Builder()
+                                    .setShowTitle(true)
+                                    .build()
+                                customTabsIntent.launchUrl(context, Uri.parse("https://sbm-app.com/terms"))
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = CuteDesignSystem.Colors.OnSurfaceVariant
+                            )
+                        ) {
+                            Text(
+                                "利用規約",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        
+                        Text(
+                            " | ",
+                            color = CuteDesignSystem.Colors.OnSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+                        
+                        TextButton(
+                            onClick = {
+                                val customTabsIntent = CustomTabsIntent.Builder()
+                                    .setShowTitle(true)
+                                    .build()
+                                customTabsIntent.launchUrl(context, Uri.parse("https://sbm-app.com/privacy"))
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = CuteDesignSystem.Colors.OnSurfaceVariant
+                            )
+                        ) {
+                            Text(
+                                "プライバシーポリシー",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }

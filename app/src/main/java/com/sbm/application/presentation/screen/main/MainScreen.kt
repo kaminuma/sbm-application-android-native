@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.sbm.application.presentation.theme.CuteDesignSystem
 import com.sbm.application.presentation.viewmodel.ActivityViewModel
 import com.sbm.application.presentation.viewmodel.MoodViewModel
+import com.sbm.application.presentation.components.AdMobBanner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,58 +65,63 @@ fun MainScreen(
                     )
                 )
             },
-        bottomBar = {
-            NavigationBar(
-                containerColor = CuteDesignSystem.Colors.Surface,
-                contentColor = CuteDesignSystem.Colors.Primary
-            ) {
-                MainTab.values().forEach { tab ->
-                    NavigationBarItem(
-                        icon = { 
-                            Icon(
-                                tab.icon, 
-                                contentDescription = tab.title,
-                                tint = if (currentRoute == tab.route) 
-                                    CuteDesignSystem.Colors.Primary 
-                                else 
-                                    CuteDesignSystem.Colors.OnSurfaceVariant
-                            ) 
-                        },
-                        label = { 
-                            Text(
-                                tab.title,
-                                fontWeight = if (currentRoute == tab.route) FontWeight.Bold else FontWeight.Normal,
-                                color = if (currentRoute == tab.route) 
-                                    CuteDesignSystem.Colors.Primary 
-                                else 
-                                    CuteDesignSystem.Colors.OnSurfaceVariant
-                            ) 
-                        },
-                        selected = currentRoute == tab.route,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = CuteDesignSystem.Colors.Primary,
-                            selectedTextColor = CuteDesignSystem.Colors.Primary,
-                            indicatorColor = CuteDesignSystem.Colors.PrimaryLight.copy(alpha = 0.3f),
-                            unselectedIconColor = CuteDesignSystem.Colors.OnSurfaceVariant,
-                            unselectedTextColor = CuteDesignSystem.Colors.OnSurfaceVariant
-                        ),
-                        onClick = {
-                            if (currentRoute != tab.route) {
-                                navController.navigate(tab.route) {
-                                    popUpTo(MainTab.Calendar.route) {
-                                        saveState = true
+            bottomBar = {
+                Column {
+                    // AdMobバナー広告
+                    AdMobBanner()
+                    
+                    NavigationBar(
+                        containerColor = CuteDesignSystem.Colors.Surface,
+                        contentColor = CuteDesignSystem.Colors.Primary
+                    ) {
+                        MainTab.values().forEach { tab ->
+                            NavigationBarItem(
+                                icon = { 
+                                    Icon(
+                                        tab.icon, 
+                                        contentDescription = tab.title,
+                                        tint = if (currentRoute == tab.route) 
+                                            CuteDesignSystem.Colors.Primary 
+                                        else 
+                                            CuteDesignSystem.Colors.OnSurfaceVariant
+                                    ) 
+                                },
+                                label = { 
+                                    Text(
+                                        tab.title,
+                                        fontWeight = if (currentRoute == tab.route) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (currentRoute == tab.route) 
+                                            CuteDesignSystem.Colors.Primary 
+                                        else 
+                                            CuteDesignSystem.Colors.OnSurfaceVariant
+                                    ) 
+                                },
+                                selected = currentRoute == tab.route,
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = CuteDesignSystem.Colors.Primary,
+                                    selectedTextColor = CuteDesignSystem.Colors.Primary,
+                                    indicatorColor = CuteDesignSystem.Colors.PrimaryLight.copy(alpha = 0.3f),
+                                    unselectedIconColor = CuteDesignSystem.Colors.OnSurfaceVariant,
+                                    unselectedTextColor = CuteDesignSystem.Colors.OnSurfaceVariant
+                                ),
+                                onClick = {
+                                    if (currentRoute != tab.route) {
+                                        navController.navigate(tab.route) {
+                                            popUpTo(MainTab.Calendar.route) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
-                            }
+                            )
                         }
-                    )
+                    }
                 }
-            }
-        },
-        containerColor = CuteDesignSystem.Colors.Background
-    ) { innerPadding ->
+            },
+            containerColor = CuteDesignSystem.Colors.Background
+        ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = MainTab.Calendar.route,
@@ -167,7 +173,7 @@ enum class MainTab(
     val title: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
-    Activities("activities", "アクティビティ", Icons.Default.List),
+    Activities("activities", "アクティビティ", Icons.AutoMirrored.Filled.List),
     Calendar("calendar", "カレンダー", Icons.Default.DateRange),
     Mood("mood", "ムード", Icons.Default.Favorite),
     Analysis("analysis", "分析", Icons.Default.Info)

@@ -220,12 +220,6 @@ private fun RecommendationSection(
                     modifier = Modifier.padding(12.dp)
                 ) {
                     Text(
-                        text = "${index + 1}. ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50)
-                    )
-                    Text(
                         text = recommendation,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.fillMaxWidth()
