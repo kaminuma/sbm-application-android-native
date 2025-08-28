@@ -121,17 +121,9 @@ android {
         // BuildConfigフィールドとしてAPI_BASE_URLを設定
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         
-        // AdMob設定
-        buildConfigField("String", "ADMOB_APP_ID", "\"${localProperties.getProperty("admob.app.id") ?: ""}\"")
-        buildConfigField("String", "ADMOB_BANNER_ID", "\"${localProperties.getProperty("admob.banner.id") ?: ""}\"")
-        
         vectorDrawables {
             useSupportLibrary = true
         }
-        
-        // Manifest placeholders for AdMob ID
-        manifestPlaceholders["admobAppId"] = localProperties.getProperty("admob.app.id") ?: ""
-
 
     }
 }
@@ -172,9 +164,6 @@ dependencies {
     // Calendar
     implementation("io.github.boguszpawlowski.composecalendar:composecalendar:1.2.0")
     implementation("io.github.boguszpawlowski.composecalendar:kotlinx-datetime:1.2.0")
-    
-    // Google Mobile Ads SDK
-    implementation("com.google.android.gms:play-services-ads:22.6.0")
     
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.8.0")
