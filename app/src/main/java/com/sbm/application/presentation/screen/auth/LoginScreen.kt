@@ -4,8 +4,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -86,7 +88,7 @@ fun LoginScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = CuteDesignSystem.Spacing.XXXL),
+                    .padding(bottom = CuteDesignSystem.Spacing.LG),
                 shape = CuteDesignSystem.Shapes.Large,
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White.copy(alpha = 0.9f)
@@ -96,43 +98,40 @@ fun LoginScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(CuteDesignSystem.Spacing.XXL),
+                        .padding(CuteDesignSystem.Spacing.LG),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // アプリアイコン風のデザイン
-                    Box(
+                    // アプリアイコン
+                    Image(
+                        painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                        contentDescription = "SBM アプリアイコン",
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(160.dp)
                             .background(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        CuteDesignSystem.Colors.Primary,
-                                        CuteDesignSystem.Colors.Secondary
+                                        Color.White,
+                                        CuteDesignSystem.Colors.SurfaceVariant.copy(alpha = 0.3f)
                                     )
                                 ),
-                                shape = RoundedCornerShape(20.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "📱",
-                            fontSize = 32.sp
-                        )
-                    }
+                                shape = RoundedCornerShape(32.dp)
+                            )
+                            .padding(8.dp)
+                    )
                     
-                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.LG))
+                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.SM))
                     
                     Text(
                         text = "SBM Application",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = CuteDesignSystem.Colors.Primary,
-                        fontSize = 28.sp
+                        fontSize = 24.sp
                     )
                     
                     Text(
                         text = "生活記録・スケジュール管理アプリ",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = CuteDesignSystem.Colors.OnSurfaceVariant,
                         modifier = Modifier.padding(top = CuteDesignSystem.Spacing.XS)
                     )
@@ -151,7 +150,7 @@ fun LoginScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(CuteDesignSystem.Spacing.XXL),
+                        .padding(CuteDesignSystem.Spacing.LG),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -362,7 +361,8 @@ fun LoginScreen(
                     // 利用規約・プライバシーポリシー
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         TextButton(
                             onClick = {
@@ -373,19 +373,21 @@ fun LoginScreen(
                             },
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = CuteDesignSystem.Colors.OnSurfaceVariant
-                            )
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 "利用規約",
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 11.sp
                             )
                         }
                         
                         Text(
                             " | ",
                             color = CuteDesignSystem.Colors.OnSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(vertical = 12.dp)
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 11.sp
                         )
                         
                         TextButton(
@@ -397,11 +399,13 @@ fun LoginScreen(
                             },
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = CuteDesignSystem.Colors.OnSurfaceVariant
-                            )
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 "プライバシーポリシー",
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 11.sp
                             )
                         }
                     }

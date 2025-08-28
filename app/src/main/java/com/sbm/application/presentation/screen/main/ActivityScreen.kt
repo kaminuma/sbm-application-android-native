@@ -325,7 +325,9 @@ fun ActivityItem(
 fun AddActivityDialog(
     initialDate: String = "",
     initialStartHour: Int? = null,
+    initialStartMinute: Int? = null,
     initialEndHour: Int? = null,
+    initialEndMinute: Int? = null,
     activityToEdit: Activity? = null, // 編集用のアクティビティ
     onDismiss: () -> Unit,
     onAdd: (String, String?, String, String, String, String, String?) -> Unit,
@@ -344,7 +346,7 @@ fun AddActivityDialog(
                     timeParts.getOrNull(1)?.toIntOrNull() ?: 0
                 )
             } else if (initialStartHour != null) {
-                java.time.LocalTime.of(initialStartHour, 0)
+                java.time.LocalTime.of(initialStartHour, initialStartMinute ?: 0)
             } else {
                 java.time.LocalTime.of(9, 0)
             }
@@ -359,9 +361,18 @@ fun AddActivityDialog(
                     timeParts.getOrNull(1)?.toIntOrNull() ?: 0
                 )
             } else if (initialEndHour != null) {
-                java.time.LocalTime.of(initialEndHour, 0)
+                java.time.LocalTime.of(initialEndHour, initialEndMinute ?: 0)
             } else if (initialStartHour != null) {
-                java.time.LocalTime.of(initialStartHour + 1, 0)
+                // 開始時間に基づいて終了時間を設定（30分または1時間後）
+                val startMin = initialStartMinute ?: 0
+                if (startMin == 30 || initialStartHour >= 23) {
+                    java.time.LocalTime.of(
+                        if (initialStartHour >= 23) 23 else initialStartHour + 1, 
+                        if (initialStartHour >= 23) 59 else 0
+                    )
+                } else {
+                    java.time.LocalTime.of(initialStartHour, 30)
+                }
             } else {
                 java.time.LocalTime.of(10, 0)
             }
