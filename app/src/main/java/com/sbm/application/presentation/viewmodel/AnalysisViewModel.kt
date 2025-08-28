@@ -216,7 +216,6 @@ class AnalysisViewModel @Inject constructor(
     private fun processMoodTrendData(moodRecords: List<MoodRecord>): List<MoodTrendData> {
         return moodRecords
             .sortedBy { it.date }
-            .takeLast(30) // Last 30 days
             .map { record ->
                 MoodTrendData(
                     date = record.date,
