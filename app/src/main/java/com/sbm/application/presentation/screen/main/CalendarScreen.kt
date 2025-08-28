@@ -62,7 +62,9 @@ fun CalendarScreen(
     var showMoodDialog by remember { mutableStateOf(false) }
     var selectedDateString by remember { mutableStateOf(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))) }
     var selectedStartHour by remember { mutableStateOf(9) } // デフォルト開始時間
+    var selectedStartMinute by remember { mutableStateOf(0) } // デフォルト開始分
     var selectedEndHour by remember { mutableStateOf(10) } // デフォルト終了時間
+    var selectedEndMinute by remember { mutableStateOf(0) } // デフォルト終了分
     var selectedMoodDate by remember { mutableStateOf<LocalDate?>(null) }
     var selectedMoodRecord by remember { mutableStateOf<MoodRecord?>(null) }
     
@@ -207,10 +209,21 @@ fun CalendarScreen(
                             activityToEdit = activity
                             showEditDialog = true
                         },
-                        onTimeSlotClick = { date, hour ->
+                        onTimeSlotClick = { date, hour, minute ->
                             selectedDateString = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                             selectedStartHour = hour
-                            selectedEndHour = hour + 1
+                            selectedStartMinute = minute
+                            // 23:30以降の場合は23:59まで、それ以外は+1時間
+                            if (hour == 23 && minute == 30) {
+                                selectedEndHour = 23
+                                selectedEndMinute = 59
+                            } else if (hour == 23 && minute == 0) {
+                                selectedEndHour = 23
+                                selectedEndMinute = 30
+                            } else {
+                                selectedEndHour = if (minute == 30) hour + 1 else hour
+                                selectedEndMinute = if (minute == 30) 0 else 30
+                            }
                             showAddDialog = true
                         },
                         onDateHeaderClick = { date ->
@@ -346,7 +359,9 @@ fun CalendarScreen(
         AddActivityDialog(
             initialDate = selectedDateString,
             initialStartHour = selectedStartHour,
+            initialStartMinute = selectedStartMinute,
             initialEndHour = selectedEndHour,
+            initialEndMinute = selectedEndMinute,
             onDismiss = { showAddDialog = false },
             onAdd = { title, contents, start, end, date, category, categorySub ->
                 viewModel.createActivity(title, contents, start, end, date, category, categorySub)
@@ -495,7 +510,7 @@ fun WeeklyCalendarView(
     moods: List<MoodRecord>,
     onMoodClick: (LocalDate, MoodRecord?) -> Unit,
     onActivityClick: (Activity) -> Unit,
-    onTimeSlotClick: (LocalDate, Int) -> Unit,
+    onTimeSlotClick: (LocalDate, Int, Int) -> Unit, // date, hour, minute
     onDateHeaderClick: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -673,7 +688,7 @@ fun WeeklyCalendarView(
                                             width = 0.5.dp,
                                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                         )
-                                        .clickable { onTimeSlotClick(date, hour) }
+                                        .clickable { onTimeSlotClick(date, hour, 0) }
                                 )
                                 // 30分スロット
                                 Box(
@@ -684,7 +699,9 @@ fun WeeklyCalendarView(
                                             width = 0.5.dp,
                                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                         )
-                                        .clickable { onTimeSlotClick(date, hour) }
+                                        .clickable { 
+                                            onTimeSlotClick(date, hour, 30)
+                                        }
                                 )
                             }
                         }
