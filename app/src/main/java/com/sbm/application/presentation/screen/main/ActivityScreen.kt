@@ -6,6 +6,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -523,28 +526,13 @@ fun AddActivityDialog(
                         }
                         
                         if (showDatePicker) {
-                            // 簡単な日付入力のためのダイアログ
-                            AlertDialog(
+                            DatePickerDialog(
                                 onDismissRequest = { showDatePicker = false },
-                                title = { Text("日付を入力") },
-                                text = {
-                                    OutlinedTextField(
-                                        value = date,
-                                        onValueChange = { date = it },
-                                        label = { Text("YYYY-MM-DD") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                                onDateSelected = { selectedDate ->
+                                    date = selectedDate
+                                    showDatePicker = false
                                 },
-                                confirmButton = {
-                                    TextButton(onClick = { showDatePicker = false }) {
-                                        Text("OK")
-                                    }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { showDatePicker = false }) {
-                                        Text("キャンセル")
-                                    }
-                                }
+                                initialDate = date
                             )
                         }
                     }
@@ -721,5 +709,58 @@ fun AddActivityDialog(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerDialog(
+    onDismissRequest: () -> Unit,
+    onDateSelected: (String) -> Unit,
+    initialDate: String
+) {
+    val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    
+    // 初期日付をパース
+    val initialLocalDate = try {
+        java.time.LocalDate.parse(initialDate, dateFormatter)
+    } catch (e: Exception) {
+        java.time.LocalDate.now()
+    }
+    
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialLocalDate
+            .atStartOfDay(java.time.ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+    )
+    
+    DatePickerDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val selectedDate = java.time.Instant.ofEpochMilli(millis)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate()
+                            .format(dateFormatter)
+                        onDateSelected(selectedDate)
+                    }
+                }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("キャンセル")
+            }
+        }
+    ) {
+        DatePicker(
+            state = datePickerState,
+            showModeToggle = false
+        )
     }
 }
