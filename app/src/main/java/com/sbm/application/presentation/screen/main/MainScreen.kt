@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.sbm.application.presentation.theme.CuteDesignSystem
 import com.sbm.application.presentation.viewmodel.ActivityViewModel
 import com.sbm.application.presentation.viewmodel.MoodViewModel
+import com.sbm.application.presentation.components.AdMobBanner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +67,9 @@ fun MainScreen(
             },
             bottomBar = {
                 Column {
+                    // AdMobバナー広告
+                    AdMobBanner()
+                    
                     NavigationBar(
                         containerColor = CuteDesignSystem.Colors.Surface,
                         contentColor = CuteDesignSystem.Colors.Primary
