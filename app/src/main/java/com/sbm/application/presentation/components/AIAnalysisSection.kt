@@ -111,19 +111,23 @@ private fun AIAnalysisHeader(
     onConfigureClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "✨ AI ライフガイド 🤖",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
         )
         
-        Row {
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(
+            horizontalArrangement = Arrangement.Center
+        ) {
             if (insight != null) {
                 IconButton(onClick = onGenerateClick) {
                     Icon(

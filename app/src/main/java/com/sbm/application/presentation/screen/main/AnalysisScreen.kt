@@ -172,15 +172,21 @@ fun AnalysisScreen(
                 
                 // AI分析セクション - 一番上に配置
                 item {
-                    AIAnalysisSection(
-                        canGenerate = uiState.canGenerateAI,
-                        canUseToday = uiState.aiUsageInfo?.canUseToday ?: true,
-                        isLoading = uiState.isAiLoading,
-                        insight = uiState.aiInsight,
-                        error = uiState.aiError,
-                        onGenerateClick = { viewModel.generateAIInsight() },
-                        onConfigureClick = onNavigateToAIConfig
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AIAnalysisSection(
+                            canGenerate = uiState.canGenerateAI,
+                            canUseToday = uiState.aiUsageInfo?.canUseToday ?: true,
+                            isLoading = uiState.isAiLoading,
+                            insight = uiState.aiInsight,
+                            error = uiState.aiError,
+                            onGenerateClick = { viewModel.generateAIInsight() },
+                            onConfigureClick = onNavigateToAIConfig,
+                            modifier = Modifier.widthIn(max = 600.dp)
+                        )
+                    }
                 }
                 
                 // 期間選択セクション
