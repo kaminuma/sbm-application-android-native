@@ -2,14 +2,16 @@ package com.sbm.application.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.sbm.application.config.ApiConfig
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.dto.AuthDto
 import com.sbm.application.data.remote.dto.LoginResponse
 import com.sbm.application.domain.repository.AuthRepository
+import com.sbm.application.domain.exception.AccountLockedException
+import com.sbm.application.domain.exception.BadCredentialsException
+import com.sbm.application.domain.exception.AuthenticationFailedException
+
 import retrofit2.Response
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -33,13 +35,14 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun login(username: String, password: String): Result<Pair<String, String>> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.login(
+
+val response = apiService.login(
                     AuthDto.LoginRequest(username = username, password = password)
                 )
                 
                 if (response.isSuccessful) {
                     val loginResponse = response.body()
-                    // デバッグ用ログ出力（セキュリティ考慮）
+
                     
                     if (loginResponse != null && !loginResponse.token.isNullOrEmpty() && !loginResponse.userId.isNullOrEmpty()) {
                         // トークンを保存
@@ -56,10 +59,18 @@ class AuthRepositoryImpl @Inject constructor(
                         Result.failure(Exception("ログインの応答が無効です: ユーザーデータが見つかりません"))
                     }
                 } else {
-                    Result.failure(Exception("ログインに失敗しました: ${response.message()} (${response.code()})"))
+                    // エラーレスポンスを解析
+                    val errorException = parseAuthErrorResponse(response)
+                    Result.failure(errorException)
                 }
             } catch (e: Exception) {
-                Result.failure(Exception("ログイン処理中にエラーが発生しました: ${e.message}"))
+
+                val errorMessage = when {
+                    e.message?.contains("Unable to resolve host") == true -> "ネットワークに接続できません。"
+                    e.message?.contains("timeout") == true -> "接続がタイムアウトしました。"
+                    else -> "ログインできませんでした。${e.message ?: ""}"
+                }
+                Result.failure(AuthenticationFailedException(errorMessage))
             }
         }
     }
@@ -202,6 +213,35 @@ class AuthRepositoryImpl @Inject constructor(
             .apply()
     }
     
+
+    private fun parseAuthErrorResponse(response: Response<AuthDto.LoginResponse>): Exception {
+
+        val errorBody = response.errorBody()?.string()
+        
+
+        val errorMessage = if (!errorBody.isNullOrEmpty()) {
+            try {
+                val json = JSONObject(errorBody)
+
+                json.optString("error", errorBody)
+            } catch (e: Exception) {
+                errorBody
+            }
+        } else {
+            when (response.code()) {
+                401 -> "ユーザー名またはパスワードが正しくありません"
+                423 -> "アカウントがロックされています"
+                else -> "ログインに失敗しました"
+            }
+        }
+        
+        return when (response.code()) {
+            401 -> BadCredentialsException(errorMessage, null)
+            423 -> AccountLockedException(errorMessage, null)
+            else -> AuthenticationFailedException(errorMessage)
+        }
+    }
+
     /**
      * JWTトークンの有効期限をチェック
      * @param token JWTトークン

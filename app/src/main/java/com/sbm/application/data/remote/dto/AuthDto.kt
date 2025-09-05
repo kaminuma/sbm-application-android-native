@@ -54,4 +54,17 @@ object AuthDto {
         @SerializedName("refreshToken")
         val refreshToken: String?
     )
+    
+    data class ErrorResponse(
+        @SerializedName("error")
+        val error: String?,
+        @SerializedName("message")
+        val message: String?,
+        @SerializedName("errorType")
+        val errorType: String?, // ACCOUNT_LOCKED, BAD_CREDENTIALS, etc.
+        @SerializedName("lockoutTimeRemaining")
+        val lockoutTimeRemaining: Long? = null, // ロックアウト残り時間（秒）
+        @SerializedName("remainingAttempts")
+        val remainingAttempts: Int? = null // 残り試行可能回数
+    )
 }
