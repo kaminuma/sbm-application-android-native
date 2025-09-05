@@ -36,6 +36,8 @@ import com.sbm.application.presentation.viewmodel.AuthViewModel
 import com.sbm.application.presentation.viewmodel.AuthErrorType
 import com.sbm.application.presentation.theme.CuteDesignSystem
 
+private const val LOCKOUT_DURATION_MINUTES = 15
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -483,7 +485,7 @@ private fun AccountLockedErrorCard(
                     val seconds = (timeRemaining % 60).toInt()
                     
                     LinearProgressIndicator(
-                        progress = 1.0f - (timeRemaining / (15 * 60f)), // 15分でロック解除
+                        progress = 1.0f - (timeRemaining / (LOCKOUT_DURATION_MINUTES * 60f)),
                         modifier = Modifier.fillMaxWidth(),
                         color = CuteDesignSystem.Colors.Error,
                         trackColor = CuteDesignSystem.Colors.Error.copy(alpha = 0.2f)
