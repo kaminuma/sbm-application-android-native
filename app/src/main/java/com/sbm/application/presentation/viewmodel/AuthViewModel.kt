@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.sbm.application.BuildConfig
 import com.sbm.application.domain.model.User
 import com.sbm.application.domain.repository.AuthRepository
+import com.sbm.application.domain.exception.AccountLockedException
+import com.sbm.application.domain.exception.BadCredentialsException
+import com.sbm.application.domain.exception.AuthenticationFailedException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,11 +69,49 @@ class AuthViewModel @Inject constructor(
                     }
                     .onFailure { error ->
                         debugLog("Login failed: ${error.message}")
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            isAuthenticated = false,
-                            error = error.message ?: "ログインエラーが発生しました"
-                        )
+                        
+                        when (error) {
+                            is AccountLockedException -> {
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    isAuthenticated = false,
+                                    error = error.message,
+                                    errorType = AuthErrorType.ACCOUNT_LOCKED,
+                                    lockoutTimeRemaining = error.lockoutTimeRemaining,
+                                    remainingAttempts = null
+                                )
+                            }
+                            is BadCredentialsException -> {
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    isAuthenticated = false,
+                                    error = error.message,
+                                    errorType = AuthErrorType.BAD_CREDENTIALS,
+                                    lockoutTimeRemaining = null,
+                                    remainingAttempts = error.remainingAttempts
+                                )
+                            }
+                            is AuthenticationFailedException -> {
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    isAuthenticated = false,
+                                    error = error.message,
+                                    errorType = AuthErrorType.AUTHENTICATION_FAILED,
+                                    lockoutTimeRemaining = null,
+                                    remainingAttempts = null
+                                )
+                            }
+                            else -> {
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    isAuthenticated = false,
+                                    error = error.message ?: "ログインエラーが発生しました",
+                                    errorType = AuthErrorType.GENERAL_ERROR,
+                                    lockoutTimeRemaining = null,
+                                    remainingAttempts = null
+                                )
+                            }
+                        }
                     }
             } catch (e: Exception) {
                 debugLog("Login exception: ${e.message}")
@@ -154,7 +195,12 @@ class AuthViewModel @Inject constructor(
     }
     
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _uiState.value = _uiState.value.copy(
+            error = null,
+            errorType = null,
+            lockoutTimeRemaining = null,
+            remainingAttempts = null
+        )
     }
     
     fun clearRegistrationSuccess() {
@@ -183,5 +229,15 @@ data class AuthUiState(
     val isAuthenticated: Boolean = false,
     val user: User? = null,
     val error: String? = null,
+    val errorType: AuthErrorType? = null,
+    val lockoutTimeRemaining: Long? = null,
+    val remainingAttempts: Int? = null,
     val registrationSuccess: Boolean = false
 )
+
+enum class AuthErrorType {
+    ACCOUNT_LOCKED,
+    BAD_CREDENTIALS,
+    AUTHENTICATION_FAILED,
+    GENERAL_ERROR
+}

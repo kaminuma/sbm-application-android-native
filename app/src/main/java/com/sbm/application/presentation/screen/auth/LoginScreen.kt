@@ -2,11 +2,13 @@ package com.sbm.application.presentation.screen.auth
 
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
+
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,7 +33,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.sbm.application.config.ApiConfig
 import com.sbm.application.R
 import com.sbm.application.presentation.viewmodel.AuthViewModel
+import com.sbm.application.presentation.viewmodel.AuthErrorType
 import com.sbm.application.presentation.theme.CuteDesignSystem
+
+private const val LOCKOUT_DURATION_MINUTES = 15
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +60,7 @@ fun LoginScreen(
                 // ナビゲーション失敗時のログ
                 try {
                     if (com.sbm.application.BuildConfig.DEBUG) {
-                        Log.e("LoginScreen", "Navigation failed", e)
+
                     }
                 } catch (ex: Exception) {
                     // リリースビルドではログを出力しない
@@ -80,10 +85,13 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(CuteDesignSystem.Spacing.XXL),
+                .padding(CuteDesignSystem.Spacing.XXL)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
+            Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.XXL)) // 上部余白
+            
             // アプリタイトル部分
             Card(
                 modifier = Modifier
@@ -136,6 +144,30 @@ fun LoginScreen(
                         modifier = Modifier.padding(top = CuteDesignSystem.Spacing.XS)
                     )
                 }
+            }
+            
+            // エラー表示（タイトルカードとログインフォームの間）
+            uiState.error?.let { error ->
+                when (uiState.errorType) {
+                    AuthErrorType.ACCOUNT_LOCKED -> {
+                        AccountLockedErrorCard(
+                            error = error,
+                            lockoutTimeRemaining = uiState.lockoutTimeRemaining
+                        )
+                    }
+                    AuthErrorType.BAD_CREDENTIALS -> {
+                        BadCredentialsErrorCard(
+                            error = error,
+                            remainingAttempts = uiState.remainingAttempts
+                        )
+                    }
+                    AuthErrorType.AUTHENTICATION_FAILED,
+                    AuthErrorType.GENERAL_ERROR,
+                    null -> {
+                        GeneralErrorCard(error = error)
+                    }
+                }
+                Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.LG))
             }
             
             // ログインフォームカード
@@ -226,7 +258,7 @@ fun LoginScreen(
                             // ログインボタンクリック時のログ
                             try {
                                 if (com.sbm.application.BuildConfig.DEBUG) {
-                                    Log.d("LoginScreen", "Login button clicked")
+
                                 }
                             } catch (e: Exception) {
                                 // リリースビルドではログを出力しない
@@ -411,40 +443,158 @@ fun LoginScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AccountLockedErrorCard(
+    error: String,
+    lockoutTimeRemaining: Long?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CuteDesignSystem.Shapes.Medium,
+        colors = CardDefaults.cardColors(
+            containerColor = CuteDesignSystem.Colors.Error.copy(alpha = 0.1f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            CuteDesignSystem.Colors.Error.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(CuteDesignSystem.Spacing.LG)
+        ) {
+
             
-            // エラー表示
-            uiState.error?.let { error ->
-                Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.LG))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = CuteDesignSystem.Shapes.Medium,
-                    colors = CardDefaults.cardColors(
-                        containerColor = CuteDesignSystem.Colors.Error.copy(alpha = 0.1f)
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        CuteDesignSystem.Colors.Error.copy(alpha = 0.3f)
+            Text(
+                text = error,
+                color = CuteDesignSystem.Colors.Error,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 20.sp
+            )
+            
+            lockoutTimeRemaining?.let { timeRemaining ->
+                if (timeRemaining > 0) {
+                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.SM))
+                    
+                    val minutes = (timeRemaining / 60).toInt()
+                    val seconds = (timeRemaining % 60).toInt()
+                    
+                    LinearProgressIndicator(
+                        progress = 1.0f - (timeRemaining / (LOCKOUT_DURATION_MINUTES * 60f)),
+                        modifier = Modifier.fillMaxWidth(),
+                        color = CuteDesignSystem.Colors.Error,
+                        trackColor = CuteDesignSystem.Colors.Error.copy(alpha = 0.2f)
                     )
-                ) {
+                    
+                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.XS))
+                    
+                    Text(
+                        text = "残り時間: ${minutes}分${seconds}秒",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CuteDesignSystem.Colors.OnSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BadCredentialsErrorCard(
+    error: String,
+    remainingAttempts: Int?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CuteDesignSystem.Shapes.Medium,
+        colors = CardDefaults.cardColors(
+            containerColor = CuteDesignSystem.Colors.Error.copy(alpha = 0.1f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            CuteDesignSystem.Colors.Error.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(CuteDesignSystem.Spacing.LG)
+        ) {
+
+            
+            Text(
+                text = error,
+                color = CuteDesignSystem.Colors.Error,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 20.sp
+            )
+            
+            remainingAttempts?.let { attempts ->
+                if (attempts > 0) {
+                    Spacer(modifier = Modifier.height(CuteDesignSystem.Spacing.SM))
+                    
+                    // 残り試行回数のインジケーター
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(CuteDesignSystem.Spacing.LG),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        repeat(5) { index ->
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(
+                                        color = if (index < attempts) CuteDesignSystem.Colors.Success else CuteDesignSystem.Colors.SurfaceVariantLight,
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    )
+                            )
+                            if (index < 4) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.width(CuteDesignSystem.Spacing.SM))
+                        
                         Text(
-                            text = "⚠️",
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(end = CuteDesignSystem.Spacing.SM)
-                        )
-                        Text(
-                            text = error,
-                            color = CuteDesignSystem.Colors.Error,
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "残り${attempts}回",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CuteDesignSystem.Colors.OnSurfaceVariant,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GeneralErrorCard(error: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CuteDesignSystem.Shapes.Medium,
+        colors = CardDefaults.cardColors(
+            containerColor = CuteDesignSystem.Colors.Error.copy(alpha = 0.1f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            CuteDesignSystem.Colors.Error.copy(alpha = 0.3f)
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(CuteDesignSystem.Spacing.LG)
+        ) {
+            Text(
+                text = error,
+                color = CuteDesignSystem.Colors.Error,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
