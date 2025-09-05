@@ -546,7 +546,7 @@ private fun BadCredentialsErrorCard(
                                 modifier = Modifier
                                     .size(12.dp)
                                     .background(
-                                        color = if (index < attempts) Color(0xFF4CAF50) else Color(0xFFE0E0E0),
+                                        color = if (index < attempts) CuteDesignSystem.Colors.Success else CuteDesignSystem.Colors.SurfaceVariantLight,
                                         shape = androidx.compose.foundation.shape.CircleShape
                                     )
                             )
