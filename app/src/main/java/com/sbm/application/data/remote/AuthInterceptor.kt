@@ -1,10 +1,6 @@
 package com.sbm.application.data.remote
 
 import android.content.Context
-import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
-import com.sbm.application.config.ApiConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -19,8 +15,9 @@ class AuthInterceptor @Inject constructor(
         var onAuthError: ((Int, String) -> Unit)? = null
     }
     
-    private val sharedPreferences: SharedPreferences by lazy {
-        createEncryptedSharedPreferences(context)
+    // セキュアなトークン管理に変更
+    private val tokenManager: com.sbm.application.data.security.SecureTokenManager by lazy {
+        com.sbm.application.data.security.SecureTokenManager(context)
     }
     
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -33,8 +30,13 @@ class AuthInterceptor @Inject constructor(
         }
         
         return try {
-            // トークンを取得（暗号化されたSharedPreferencesから直接）
-            val token = sharedPreferences.getString("auth_token", null)
+            // セキュアなトークン取得
+            val token = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                tokenManager.getToken()
+            } else {
+                // Android 6.0 未満の場合は認証なしで進行
+                null
+            }
             
             val response = if (!token.isNullOrEmpty()) {
                 val authenticatedRequest = originalRequest.newBuilder()
@@ -55,28 +57,13 @@ class AuthInterceptor @Inject constructor(
             }
             
             response
+        } catch (securityException: SecurityException) {
+            // セキュリティエラーを適切にハンドリング
+            onAuthError?.invoke(500, "認証システムエラー: ${securityException.message}")
+            chain.proceed(originalRequest)
         } catch (e: Exception) {
             // エラーが発生した場合は元のリクエストを実行
             chain.proceed(originalRequest)
-        }
-    }
-    
-    private fun createEncryptedSharedPreferences(context: Context): SharedPreferences {
-        return try {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            
-            EncryptedSharedPreferences.create(
-                context,
-                "encrypted_auth_prefs",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-        } catch (e: Exception) {
-            // Fallback to regular SharedPreferences if encryption fails
-            context.getSharedPreferences("auth_prefs_fallback", Context.MODE_PRIVATE)
         }
     }
 }

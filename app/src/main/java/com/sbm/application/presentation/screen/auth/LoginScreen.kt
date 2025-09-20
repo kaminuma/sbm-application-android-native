@@ -49,7 +49,25 @@ fun LoginScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     
+    // SecureWebViewManager のインスタンス
+    val secureWebViewManager = remember { com.sbm.application.data.security.SecureWebViewManager() }
+    var urlErrorMessage by remember { mutableStateOf<String?>(null) }
+    
     // より確実な認証状態監視
+    // URL遷移エラーの表示
+    urlErrorMessage?.let { error ->
+        AlertDialog(
+            onDismissRequest = { urlErrorMessage = null },
+            title = { Text("URL遷移エラー") },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = { urlErrorMessage = null }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+    
     LaunchedEffect(uiState.isAuthenticated, uiState.user) {
         if (uiState.isAuthenticated && uiState.user != null && !uiState.isLoading) {
             // 複数の条件を満たす場合のみ画面遷移
@@ -398,10 +416,12 @@ fun LoginScreen(
                     ) {
                         TextButton(
                             onClick = {
-                                val customTabsIntent = CustomTabsIntent.Builder()
-                                    .setShowTitle(true)
-                                    .build()
-                                customTabsIntent.launchUrl(context, Uri.parse("https://sbm-app.com/terms"))
+                                // セキュアなURL遷移
+                                secureWebViewManager.openSecureUrl(
+                                    context = context,
+                                    url = "https://sbm-app.com/terms",
+                                    onError = { error -> urlErrorMessage = error }
+                                )
                             },
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = CuteDesignSystem.Colors.OnSurfaceVariant
@@ -424,10 +444,12 @@ fun LoginScreen(
                         
                         TextButton(
                             onClick = {
-                                val customTabsIntent = CustomTabsIntent.Builder()
-                                    .setShowTitle(true)
-                                    .build()
-                                customTabsIntent.launchUrl(context, Uri.parse("https://sbm-app.com/privacy"))
+                                // セキュアなURL遷移
+                                secureWebViewManager.openSecureUrl(
+                                    context = context,
+                                    url = "https://sbm-app.com/privacy",
+                                    onError = { error -> urlErrorMessage = error }
+                                )
                             },
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = CuteDesignSystem.Colors.OnSurfaceVariant
@@ -548,7 +570,7 @@ private fun BadCredentialsErrorCard(
                                 modifier = Modifier
                                     .size(12.dp)
                                     .background(
-                                        color = if (index < attempts) CuteDesignSystem.Colors.Success else CuteDesignSystem.Colors.SurfaceVariantLight,
+                                        color = if (index < attempts) CuteDesignSystem.Colors.Success else CuteDesignSystem.Colors.SurfaceVariant,
                                         shape = androidx.compose.foundation.shape.CircleShape
                                     )
                             )

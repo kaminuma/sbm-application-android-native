@@ -113,8 +113,8 @@ android {
         applicationId = "com.sbm.application"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -165,6 +165,9 @@ dependencies {
     
     // Security
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    
+    // JWT
+    implementation("com.auth0:java-jwt:4.4.0")
     
     // Browser
     implementation("androidx.browser:browser:1.7.0")

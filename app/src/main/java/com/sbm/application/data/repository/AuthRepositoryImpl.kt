@@ -1,9 +1,7 @@
 package com.sbm.application.data.repository
 
 import android.content.Context
-import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.dto.AuthDto
 import com.sbm.application.data.remote.dto.LoginResponse
@@ -27,16 +25,19 @@ class AuthRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : AuthRepository {
     
-    private val sharedPreferences: SharedPreferences by lazy {
-        createEncryptedSharedPreferences(context)
+    // セキュアなトークン管理に変更
+    private val tokenManager: com.sbm.application.data.security.SecureTokenManager by lazy {
+        com.sbm.application.data.security.SecureTokenManager(context)
     }
     private var cachedToken: String? = null
     
     override suspend fun login(username: String, password: String): Result<Pair<String, String>> {
         return withContext(Dispatchers.IO) {
             try {
-
-val response = apiService.login(
+                // セキュアなログ出力
+                com.sbm.application.data.security.SecureLogger.debug("AuthRepository", "ログイン試行開始")
+                
+                val response = apiService.login(
                     AuthDto.LoginRequest(username = username, password = password)
                 )
                 
@@ -45,15 +46,23 @@ val response = apiService.login(
 
                     
                     if (loginResponse != null && !loginResponse.token.isNullOrEmpty() && !loginResponse.userId.isNullOrEmpty()) {
-                        // トークンを保存
-                        sharedPreferences.edit()
-                            .putString("auth_token", loginResponse.token)
-                            .putString("user_id", loginResponse.userId)
-                            .putString("refresh_token", loginResponse.refreshToken)
-                            .apply()
+                        // セキュアなトークン保存
+                        try {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                                tokenManager.saveToken(loginResponse.token!!)
+                                // ユーザーIDは別途保存（暗号化対象外の基本情報）
+                                saveUserIdSecurely(loginResponse.userId!!)
+                                saveRefreshTokenSecurely(loginResponse.refreshToken)
+                            } else {
+                                return@withContext Result.failure(
+                                    SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
+                                )
+                            }
+                        } catch (e: SecurityException) {
+                            return@withContext Result.failure(e)
+                        }
                         
                         cachedToken = loginResponse.token
-                        
                         Result.success(Pair(loginResponse.token!!, loginResponse.userId!!))
                     } else {
                         Result.failure(Exception("ログインの応答が無効です: ユーザーデータが見つかりません"))
@@ -65,6 +74,9 @@ val response = apiService.login(
                 }
             } catch (e: Exception) {
 
+                // エラー情報の匿名化
+                com.sbm.application.data.security.SecureLogger.error("AuthRepository", "ログイン処理でエラーが発生", e)
+                
                 val errorMessage = when {
                     e.message?.contains("Unable to resolve host") == true -> "ネットワークに接続できません。"
                     e.message?.contains("timeout") == true -> "接続がタイムアウトしました。"
@@ -118,7 +130,16 @@ val response = apiService.login(
     }
     
     override suspend fun isLoggedIn(): Boolean {
-        val storedToken = sharedPreferences.getString("auth_token", null)
+        val storedToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            try {
+                tokenManager.getToken()
+            } catch (e: SecurityException) {
+                null
+            }
+        } else {
+            null
+        }
+        
         cachedToken = storedToken
         
         // トークンが存在しない場合はfalse
@@ -126,27 +147,34 @@ val response = apiService.login(
             return false
         }
         
-        // JWTトークンの有効期限をチェック
-        return try {
-            isTokenValid(storedToken)
-        } catch (e: Exception) {
-            // トークンのパースに失敗した場合は無効とみなす
-            false
-        }
+        // 包括的なJWT検証
+        return isTokenValid(storedToken)
     }
     
     override suspend fun getStoredToken(): String? {
-        val storedToken = sharedPreferences.getString("auth_token", null)
-        cachedToken = storedToken
-        return storedToken
+        return try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val token = tokenManager.getToken()
+                cachedToken = token
+                token
+            } else {
+                null
+            }
+        } catch (e: SecurityException) {
+            // トークン取得失敗時は認証失効とみなす
+            cachedToken = null
+            null
+        }
     }
     
     override suspend fun getStoredUserId(): String? {
-        return sharedPreferences.getString("user_id", null)
+        return context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
+            .getString("user_id", null)
     }
     
     override suspend fun getStoredRefreshToken(): String? {
-        return sharedPreferences.getString("refresh_token", null)
+        return context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
+            .getString("refresh_token", null)
     }
     
     override suspend fun refreshToken(): Result<Pair<String, String>> {
@@ -164,11 +192,19 @@ val response = apiService.login(
                 if (response.isSuccessful) {
                     val refreshResponse = response.body()
                     if (refreshResponse != null && !refreshResponse.token.isNullOrEmpty()) {
-                        // 新しいトークンを保存
-                        sharedPreferences.edit()
-                            .putString("auth_token", refreshResponse.token)
-                            .putString("refresh_token", refreshResponse.refreshToken ?: refreshToken)
-                            .apply()
+                        // セキュアなトークン保存
+                        try {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                                tokenManager.saveToken(refreshResponse.token!!)
+                                saveRefreshTokenSecurely(refreshResponse.refreshToken ?: refreshToken)
+                            } else {
+                                return@withContext Result.failure(
+                                    SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
+                                )
+                            }
+                        } catch (e: SecurityException) {
+                            return@withContext Result.failure(e)
+                        }
                         
                         cachedToken = refreshResponse.token
                         
@@ -186,11 +222,9 @@ val response = apiService.login(
     }
     
     override suspend fun clearAuth() {
-        sharedPreferences.edit()
-            .remove("auth_token")
-            .remove("user_id")
-            .remove("refresh_token")
-            .apply()
+        tokenManager.clearToken()
+        clearUserIdSecurely()
+        clearRefreshTokenSecurely()
         cachedToken = null
     }
     
@@ -201,97 +235,114 @@ val response = apiService.login(
     }
     
     override suspend fun saveToken(token: String) {
-        sharedPreferences.edit()
-            .putString("auth_token", token)
-            .apply()
-        cachedToken = token
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                tokenManager.saveToken(token)
+                cachedToken = token
+            } else {
+                throw SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
+            }
+        } catch (e: SecurityException) {
+            throw e
+        }
     }
     
     override suspend fun saveUserId(userId: String) {
-        sharedPreferences.edit()
-            .putString("user_id", userId)
-            .apply()
+        saveUserIdSecurely(userId)
     }
     
 
     private fun parseAuthErrorResponse(response: Response<AuthDto.LoginResponse>): Exception {
-
         val errorBody = response.errorBody()?.string()
         
-
-        val errorMessage = if (!errorBody.isNullOrEmpty()) {
+        if (!errorBody.isNullOrEmpty()) {
             try {
-                val json = JSONObject(errorBody)
-
-                json.optString("error", errorBody)
+                // AuthDto.ErrorResponseを使用してデシリアライズ
+                val gson = com.google.gson.Gson()
+                val errorResponse = gson.fromJson(errorBody, AuthDto.ErrorResponse::class.java)
+                
+                val errorMessage = errorResponse.error ?: errorResponse.message ?: errorBody
+                
+                return when (response.code()) {
+                    401 -> BadCredentialsException(errorMessage, errorResponse.remainingAttempts)
+                    423 -> AccountLockedException(errorMessage, errorResponse.lockoutTimeRemaining)
+                    else -> AuthenticationFailedException(errorMessage)
+                }
             } catch (e: Exception) {
-                errorBody
+                // JSON解析失敗時は既存のロジックにフォールバック
+                val errorMessage = try {
+                    val json = JSONObject(errorBody)
+                    json.optString("error", errorBody)
+                } catch (ex: Exception) {
+                    errorBody
+                }
+                
+                return when (response.code()) {
+                    401 -> BadCredentialsException(errorMessage, null)
+                    423 -> AccountLockedException(errorMessage, null)
+                    else -> AuthenticationFailedException(errorMessage)
+                }
             }
         } else {
-            when (response.code()) {
+            val errorMessage = when (response.code()) {
                 401 -> "ユーザー名またはパスワードが正しくありません"
                 423 -> "アカウントがロックされています"
                 else -> "ログインに失敗しました"
             }
-        }
-        
-        return when (response.code()) {
-            401 -> BadCredentialsException(errorMessage, null)
-            423 -> AccountLockedException(errorMessage, null)
-            else -> AuthenticationFailedException(errorMessage)
+            
+            return when (response.code()) {
+                401 -> BadCredentialsException(errorMessage, null)
+                423 -> AccountLockedException(errorMessage, null)
+                else -> AuthenticationFailedException(errorMessage)
+            }
         }
     }
 
     /**
-     * JWTトークンの有効期限をチェック
+     * JWT トークンの包括的検証
      * @param token JWTトークン
-     * @return トークンが有効な場合はtrue、期限切れの場合はfalse
+     * @return トークンが有効な場合はtrue
      */
     private fun isTokenValid(token: String): Boolean {
-        try {
-            // JWTトークンを分解（header.payload.signature）
-            val parts = token.split(".")
-            if (parts.size != 3) {
-                return false
-            }
-            
-            // payloadをデコード
-            val payload = String(Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP))
-            val jsonObject = JSONObject(payload)
-            
-            // exp（有効期限）フィールドを取得
-            if (!jsonObject.has("exp")) {
-                // expフィールドがない場合は無効とみなす
-                return false
-            }
-            
-            val exp = jsonObject.getLong("exp")
-            val currentTime = System.currentTimeMillis() / 1000
-            
-            // 現在時刻と比較（5分の余裕を持たせる）
-            return currentTime < (exp - 300)
+        return try {
+            // 包括的なJWT検証を実行
+            com.sbm.application.data.security.JWTValidator.validateToken(token)
         } catch (e: Exception) {
-            // パースエラーなどが発生した場合は無効とみなす
-            return false
+            false
         }
+    }
+    
+    // セキュアなユーザー情報保存のヘルパーメソッド
+    private fun saveUserIdSecurely(userId: String) {
+        // ユーザーIDは暗号化不要だが、専用のpreferencesに保存
+        context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
+            .edit()
+            .putString("user_id", userId)
+            .apply()
+    }
+    
+    private fun saveRefreshTokenSecurely(refreshToken: String?) {
+        if (refreshToken != null) {
+            context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
+                .edit()
+                .putString("refresh_token", refreshToken)
+                .apply()
+        }
+    }
+    
+    private fun clearUserIdSecurely() {
+        context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
+    
+    private fun clearRefreshTokenSecurely() {
+        context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
+            .edit()
+            .remove("refresh_token")
+            .apply()
     }
 
-    private fun createEncryptedSharedPreferences(context: Context): SharedPreferences {
-        return try {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            
-            EncryptedSharedPreferences.create(
-                context,
-                "encrypted_auth_prefs",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-        } catch (e: Exception) {
-            // Fallback to regular SharedPreferences if encryption fails
-            context.getSharedPreferences("auth_prefs_fallback", Context.MODE_PRIVATE)
-        }
-    }
+
 }
