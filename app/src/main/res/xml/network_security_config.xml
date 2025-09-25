@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- デバッグビルド用設定 - より包括的にHTTP通信を許可 -->
+    <!-- デバッグビルド用設定: 開発時のHTTP通信を許可 -->
     <debug-overrides>
-        <!-- デバッグ時はすべてのHTTP通信を許可 -->
         <base-config cleartextTrafficPermitted="true">
             <trust-anchors>
                 <certificates src="system"/>
@@ -10,16 +9,27 @@
             </trust-anchors>
         </base-config>
     </debug-overrides>
-    
-    <!-- 本番環境用設定 -->
+
+    <!-- 本番環境: APIサーバー用 -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api.sbm-app.com</domain>
         <trust-anchors>
             <certificates src="system"/>
         </trust-anchors>
     </domain-config>
-    
-    <!-- デフォルト設定（本番ビルド用） -->
+
+    <!-- 本番環境: AdMob広告用 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">googlesyndication.com</domain>
+        <domain includeSubdomains="true">googleadservices.com</domain>
+        <domain includeSubdomains="true">doubleclick.net</domain>
+        <domain includeSubdomains="true">google.com</domain>
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </domain-config>
+
+    <!-- 本番環境: デフォルト設定（すべてHTTPS必須） -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system"/>
