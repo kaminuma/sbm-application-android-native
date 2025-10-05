@@ -136,7 +136,7 @@ class AuthRepositoryImpl @Inject constructor(
                         apiService.logout(AuthDto.LogoutRequest(refreshToken))
                     } catch (e: Exception) {
                         // ネットワークエラーは無視してローカルクリーンアップを続行
-                        com.sbm.application.data.security.SecureLogger.debug("AuthRepository", "ログアウト通知失敗（続行）: ${e.message}")
+                        com.sbm.application.data.security.SecureLogger.debug("AuthRepository", "ログアウト通知失敗（続行）")
                     }
                 }
                 
