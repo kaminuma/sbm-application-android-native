@@ -55,6 +55,11 @@ object AuthDto {
         val refreshToken: String?
     )
     
+    data class LogoutRequest(
+        @SerializedName("refreshToken")
+        val refreshToken: String
+    )
+    
     data class ErrorResponse(
         @SerializedName("error")
         val error: String?,

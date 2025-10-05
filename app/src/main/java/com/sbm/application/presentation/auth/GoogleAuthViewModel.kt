@@ -20,9 +20,20 @@ class GoogleAuthViewModel @Inject constructor(
             val response = authRepository.getOAuth2Session(sessionId)
             if (response.isSuccessful) {
                 response.body()?.let { loginResponse ->
-                    // トークンを保存
+                    // アクセストークンとユーザーIDを保存
                     authRepository.saveToken(loginResponse.token)
                     authRepository.saveUserId(loginResponse.userId)
+                    
+                    // リフレッシュトークンが存在する場合は保存
+                    if (!loginResponse.refreshToken.isNullOrEmpty()) {
+                        try {
+                            authRepository.saveRefreshToken(loginResponse.refreshToken)
+                        } catch (e: Exception) {
+                            // リフレッシュトークン保存失敗時もログインは成功とする
+                            // ログは出力しない（セキュリティ上の理由）
+                        }
+                    }
+                    
                     emit(Result.Success(Unit))
                 } ?: emit(Result.Error("レスポンスが空です"))
             } else {

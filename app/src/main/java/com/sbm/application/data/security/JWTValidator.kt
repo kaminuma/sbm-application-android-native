@@ -90,6 +90,27 @@ object JWTValidator {
             return false
         }
     }
+
+    /**
+     * トークンの有効期限が近いかチェック
+     * @param token JWTトークン
+     * @param thresholdMinutes 閾値（分）
+     * @return 有効期限まで閾値以内の場合はtrue
+     */
+    fun isTokenExpiringSoon(token: String, thresholdMinutes: Int = 2): Boolean {
+        return try {
+            val decodedJWT = JWT.decode(token)
+            val expiresAt = decodedJWT.expiresAt ?: return false
+            
+            val currentTime = Date()
+            val thresholdTime = Date(currentTime.time + thresholdMinutes * 60 * 1000)
+            
+            // 有効期限が閾値時間より前（期限が近い）
+            expiresAt.before(thresholdTime)
+        } catch (e: Exception) {
+            false
+        }
+    }
     
     /**
      * 有効な発行者かチェック

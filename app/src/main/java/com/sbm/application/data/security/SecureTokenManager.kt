@@ -22,7 +22,9 @@ class SecureTokenManager(private val context: Context) {
     companion object {
         private const val KEYSTORE_ALIAS = "SBM_AUTH_KEY"
         private const val PREFS_NAME = "sbm_secure_auth"
-        private const val TOKEN_KEY = "encrypted_token"
+        private const val ACCESS_TOKEN_KEY = "encrypted_access_token"
+        private const val REFRESH_TOKEN_KEY = "encrypted_refresh_token"
+        private const val USER_ID_KEY = "encrypted_user_id"
     }
     
     private val keystore: KeyStore by lazy {
@@ -56,12 +58,13 @@ class SecureTokenManager(private val context: Context) {
     }
     
     /**
-     * トークンの暗号化保存
-     * @param token 保存するトークン
-     * @throws SecurityException 暗号化に失敗した場合（フォールバックなし）
+     * データの暗号化保存（共通メソッド）
+     * @param data 保存するデータ
+     * @param key 保存先キー
+     * @throws SecurityException 暗号化に失敗した場合
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    fun saveToken(token: String) {
+    private fun saveEncryptedData(data: String, key: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             throw SecurityException("Android 6.0 未満はサポート対象外です")
         }
@@ -71,7 +74,7 @@ class SecureTokenManager(private val context: Context) {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, secretKey)
             
-            val encryptedBytes = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
+            val encryptedBytes = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
             val iv = cipher.iv
             
             // IV + 暗号化データを結合
@@ -80,28 +83,28 @@ class SecureTokenManager(private val context: Context) {
             
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
-                .putString(TOKEN_KEY, encodedData)
+                .putString(key, encodedData)
                 .apply()
                 
         } catch (e: Exception) {
-            // フォールバックなし - 例外をそのまま投げる
-            throw SecurityException("トークンの暗号化に失敗しました", e)
+            throw SecurityException("データの暗号化に失敗しました", e)
         }
     }
     
     /**
-     * トークンの復号化取得
-     * @return 復号化されたトークン、存在しない場合はnull
+     * データの復号化取得（共通メソッド）
+     * @param key 取得元キー
+     * @return 復号化されたデータ、存在しない場合はnull
      * @throws SecurityException 復号化に失敗した場合
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    fun getToken(): String? {
+    private fun getEncryptedData(key: String): String? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             throw SecurityException("Android 6.0 未満はサポート対象外です")
         }
         
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val encodedData = prefs.getString(TOKEN_KEY, null) ?: return null
+        val encodedData = prefs.getString(key, null) ?: return null
         
         try {
             val secretKey = getOrCreateSecretKey()
@@ -119,19 +122,113 @@ class SecureTokenManager(private val context: Context) {
             return String(decryptedBytes, Charsets.UTF_8)
             
         } catch (e: Exception) {
-            // 復号化失敗時はトークンを削除（セキュリティ上の理由）
-            clearToken()
-            throw SecurityException("トークンの復号化に失敗しました", e)
+            // 復号化失敗時はデータを削除（セキュリティ上の理由）
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(key)
+                .apply()
+            throw SecurityException("データの復号化に失敗しました", e)
         }
+    }
+
+    /**
+     * アクセストークンの保存
+     * @param token 保存するアクセストークン
+     * @throws SecurityException 暗号化に失敗した場合
+     */
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun saveAccessToken(token: String) {
+        saveEncryptedData(token, ACCESS_TOKEN_KEY)
     }
     
     /**
-     * トークンの削除
+     * リフレッシュトークンの保存
+     * @param token 保存するリフレッシュトークン
+     * @throws SecurityException 暗号化に失敗した場合
      */
-    fun clearToken() {
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun saveRefreshToken(token: String) {
+        saveEncryptedData(token, REFRESH_TOKEN_KEY)
+    }
+    
+    /**
+     * ユーザーIDの保存
+     * @param userId 保存するユーザーID
+     * @throws SecurityException 暗号化に失敗した場合
+     */
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun saveUserId(userId: String) {
+        saveEncryptedData(userId, USER_ID_KEY)
+    }
+    
+    /**
+     * アクセストークンの取得
+     * @return 復号化されたアクセストークン、存在しない場合はnull
+     * @throws SecurityException 復号化に失敗した場合
+     */
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun getAccessToken(): String? {
+        return getEncryptedData(ACCESS_TOKEN_KEY)
+    }
+    
+    /**
+     * リフレッシュトークンの取得
+     * @return 復号化されたリフレッシュトークン、存在しない場合はnull
+     * @throws SecurityException 復号化に失敗した場合
+     */
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun getRefreshToken(): String? {
+        return getEncryptedData(REFRESH_TOKEN_KEY)
+    }
+    
+    /**
+     * ユーザーIDの取得
+     * @return 復号化されたユーザーID、存在しない場合はnull
+     * @throws SecurityException 復号化に失敗した場合
+     */
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun getUserId(): String? {
+        return getEncryptedData(USER_ID_KEY)
+    }
+    
+    /**
+     * 全認証データの削除
+     */
+    fun clearAllTokens() {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
-            .remove(TOKEN_KEY)
+            .remove(ACCESS_TOKEN_KEY)
+            .remove(REFRESH_TOKEN_KEY)
+            .remove(USER_ID_KEY)
             .apply()
+    }
+    
+    /**
+     * レガシー対応：旧メソッドの維持
+     * @deprecated saveAccessToken を使用してください
+     */
+    @Deprecated("Use saveAccessToken instead", ReplaceWith("saveAccessToken(token)"))
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun saveToken(token: String) {
+        saveAccessToken(token)
+    }
+    
+    /**
+     * レガシー対応：旧メソッドの維持
+     * @deprecated getAccessToken を使用してください
+     */
+    @Deprecated("Use getAccessToken instead", ReplaceWith("getAccessToken()"))
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun getToken(): String? {
+        return getAccessToken()
+    }
+    
+    /**
+     * レガシー対応：旧メソッドの維持
+     * @deprecated clearAllTokens を使用してください
+     */
+    @Deprecated("Use clearAllTokens instead", ReplaceWith("clearAllTokens()"))
+    fun clearToken() {
+        clearAllTokens()
     }
 }

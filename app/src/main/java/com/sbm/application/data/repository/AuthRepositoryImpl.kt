@@ -5,6 +5,7 @@ import android.content.Context
 import com.sbm.application.data.remote.ApiService
 import com.sbm.application.data.remote.dto.AuthDto
 import com.sbm.application.data.remote.dto.LoginResponse
+import com.sbm.application.data.remote.AuthInterceptor
 import com.sbm.application.domain.repository.AuthRepository
 import com.sbm.application.domain.exception.AccountLockedException
 import com.sbm.application.domain.exception.BadCredentialsException
@@ -31,6 +32,11 @@ class AuthRepositoryImpl @Inject constructor(
     }
     private var cachedToken: String? = null
     
+    init {
+        // AuthInterceptorにリフレッシュコールバックを設定
+        AuthInterceptor.refreshTokenCallback = { refreshTokenForInterceptor() }
+    }
+    
     override suspend fun login(username: String, password: String): Result<Pair<String, String>> {
         return withContext(Dispatchers.IO) {
             try {
@@ -49,10 +55,11 @@ class AuthRepositoryImpl @Inject constructor(
                         // セキュアなトークン保存
                         try {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                                tokenManager.saveToken(loginResponse.token!!)
-                                // ユーザーIDは別途保存（暗号化対象外の基本情報）
-                                saveUserIdSecurely(loginResponse.userId!!)
-                                saveRefreshTokenSecurely(loginResponse.refreshToken)
+                                tokenManager.saveAccessToken(loginResponse.token!!)
+                                tokenManager.saveUserId(loginResponse.userId!!)
+                                if (!loginResponse.refreshToken.isNullOrEmpty()) {
+                                    tokenManager.saveRefreshToken(loginResponse.refreshToken)
+                                }
                             } else {
                                 return@withContext Result.failure(
                                     SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
@@ -119,7 +126,20 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout(token: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                // API doesn't have logout endpoint, just clear local auth
+                val refreshToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    tokenManager.getRefreshToken()
+                } else null
+                
+                if (!refreshToken.isNullOrEmpty()) {
+                    // サーバーにログアウト通知（エラーは無視）
+                    try {
+                        apiService.logout(AuthDto.LogoutRequest(refreshToken))
+                    } catch (e: Exception) {
+                        // ネットワークエラーは無視してローカルクリーンアップを続行
+                        com.sbm.application.data.security.SecureLogger.debug("AuthRepository", "ログアウト通知失敗（続行）: ${e.message}")
+                    }
+                }
+                
                 clearAuth()
                 Result.success(Unit)
             } catch (e: Exception) {
@@ -132,7 +152,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun isLoggedIn(): Boolean {
         val storedToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             try {
-                tokenManager.getToken()
+                tokenManager.getAccessToken()
             } catch (e: SecurityException) {
                 null
             }
@@ -147,14 +167,27 @@ class AuthRepositoryImpl @Inject constructor(
             return false
         }
         
-        // 包括的なJWT検証
-        return isTokenValid(storedToken)
+        // アクセストークンが有効ならOK
+        if (isTokenValid(storedToken)) {
+            return true
+        }
+        
+        // アクセストークンが無効 → リフレッシュトークンで復帰を試行
+        com.sbm.application.data.security.SecureLogger.debug("AuthRepository", "アクセストークンが無効のため、リフレッシュを試行します")
+        val refreshResult = refreshToken()
+        if (refreshResult.isSuccess) {
+            com.sbm.application.data.security.SecureLogger.debug("AuthRepository", "リフレッシュ成功：ログイン状態を維持します")
+            return true
+        }
+        
+        com.sbm.application.data.security.SecureLogger.debug("AuthRepository", "リフレッシュ失敗：ログアウトします")
+        return false
     }
     
     override suspend fun getStoredToken(): String? {
         return try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                val token = tokenManager.getToken()
+                val token = tokenManager.getAccessToken()
                 cachedToken = token
                 token
             } else {
@@ -168,13 +201,27 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     override suspend fun getStoredUserId(): String? {
-        return context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
-            .getString("user_id", null)
+        return try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                tokenManager.getUserId()
+            } else {
+                null
+            }
+        } catch (e: SecurityException) {
+            null
+        }
     }
     
     override suspend fun getStoredRefreshToken(): String? {
-        return context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
-            .getString("refresh_token", null)
+        return try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                tokenManager.getRefreshToken()
+            } else {
+                null
+            }
+        } catch (e: SecurityException) {
+            null
+        }
     }
     
     override suspend fun refreshToken(): Result<Pair<String, String>> {
@@ -195,8 +242,10 @@ class AuthRepositoryImpl @Inject constructor(
                         // セキュアなトークン保存
                         try {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                                tokenManager.saveToken(refreshResponse.token!!)
-                                saveRefreshTokenSecurely(refreshResponse.refreshToken ?: refreshToken)
+                                tokenManager.saveAccessToken(refreshResponse.token!!)
+                                if (!refreshResponse.refreshToken.isNullOrEmpty()) {
+                                    tokenManager.saveRefreshToken(refreshResponse.refreshToken)
+                                }
                             } else {
                                 return@withContext Result.failure(
                                     SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
@@ -222,9 +271,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     override suspend fun clearAuth() {
-        tokenManager.clearToken()
-        clearUserIdSecurely()
-        clearRefreshTokenSecurely()
+        tokenManager.clearAllTokens()
         cachedToken = null
     }
     
@@ -237,7 +284,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun saveToken(token: String) {
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                tokenManager.saveToken(token)
+                tokenManager.saveAccessToken(token)
                 cachedToken = token
             } else {
                 throw SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
@@ -248,7 +295,27 @@ class AuthRepositoryImpl @Inject constructor(
     }
     
     override suspend fun saveUserId(userId: String) {
-        saveUserIdSecurely(userId)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                tokenManager.saveUserId(userId)
+            } else {
+                throw SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
+            }
+        } catch (e: SecurityException) {
+            throw e
+        }
+    }
+    
+    override suspend fun saveRefreshToken(refreshToken: String) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                tokenManager.saveRefreshToken(refreshToken)
+            } else {
+                throw SecurityException("Android 6.0 未満はセキュリティ上サポート対象外です")
+            }
+        } catch (e: SecurityException) {
+            throw e
+        }
     }
     
 
@@ -312,36 +379,18 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
     
-    // セキュアなユーザー情報保存のヘルパーメソッド
-    private fun saveUserIdSecurely(userId: String) {
-        // ユーザーIDは暗号化不要だが、専用のpreferencesに保存
-        context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
-            .edit()
-            .putString("user_id", userId)
-            .apply()
-    }
-    
-    private fun saveRefreshTokenSecurely(refreshToken: String?) {
-        if (refreshToken != null) {
-            context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
-                .edit()
-                .putString("refresh_token", refreshToken)
-                .apply()
+    /**
+     * AuthInterceptor専用のリフレッシュメソッド
+     * @return 成功した場合true、失敗した場合false
+     */
+    private suspend fun refreshTokenForInterceptor(): Boolean {
+        return try {
+            val result = refreshToken()
+            result.isSuccess
+        } catch (e: Exception) {
+            com.sbm.application.data.security.SecureLogger.error("AuthRepository", "インターセプターからのリフレッシュ失敗", e)
+            false
         }
-    }
-    
-    private fun clearUserIdSecurely() {
-        context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .apply()
-    }
-    
-    private fun clearRefreshTokenSecurely() {
-        context.getSharedPreferences("sbm_user_info", Context.MODE_PRIVATE)
-            .edit()
-            .remove("refresh_token")
-            .apply()
     }
 
 

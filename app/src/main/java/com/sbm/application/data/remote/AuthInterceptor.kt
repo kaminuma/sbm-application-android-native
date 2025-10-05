@@ -1,6 +1,8 @@
 package com.sbm.application.data.remote
 
 import android.content.Context
+import android.util.Log
+import com.sbm.application.data.security.SecureTokenManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -11,59 +13,150 @@ class AuthInterceptor @Inject constructor(
 ) : Interceptor {
     
     companion object {
-        // 403/401エラー時のコールバック
+        // 認証エラー時のコールバック
         var onAuthError: ((Int, String) -> Unit)? = null
+        // トークンリフレッシュコールバック（AuthRepositoryから設定）
+        var refreshTokenCallback: (suspend () -> Boolean)? = null
+        private const val TAG = "AuthInterceptor"
     }
     
-    // セキュアなトークン管理に変更
-    private val tokenManager: com.sbm.application.data.security.SecureTokenManager by lazy {
-        com.sbm.application.data.security.SecureTokenManager(context)
+    // セキュアなトークン管理
+    private val tokenManager: SecureTokenManager by lazy {
+        SecureTokenManager(context)
     }
+    
+    // 同時リフレッシュを防ぐための排他制御
+    @Volatile
+    private var isRefreshing = false
+    
+    // リフレッシュ頻度制限
+    @Volatile
+    private var lastRefreshTime = 0L
+    @Volatile
+    private var refreshCount = 0
     
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         
-        // 認証が不要なエンドポイント（login, register）をスキップ
+        // 認証が不要なエンドポイントをスキップ
         val url = originalRequest.url.toString()
-        if (url.contains("/auth/login") || url.contains("/auth/register")) {
+        if (url.contains("/auth/login") || 
+            url.contains("/auth/register") || 
+            url.contains("/auth/refresh")) {
             return chain.proceed(originalRequest)
         }
         
         return try {
-            // セキュアなトークン取得
-            val token = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                tokenManager.getToken()
+            // アクセストークン取得
+            val accessToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                tokenManager.getAccessToken()
             } else {
-                // Android 6.0 未満の場合は認証なしで進行
                 null
             }
             
-            val response = if (!token.isNullOrEmpty()) {
+            // 最初のリクエスト実行
+            var response = if (!accessToken.isNullOrEmpty()) {
                 val authenticatedRequest = originalRequest.newBuilder()
-                    .header("Authorization", "Bearer $token")
+                    .header("Authorization", "Bearer $accessToken")
                     .build()
-                
                 chain.proceed(authenticatedRequest)
             } else {
                 chain.proceed(originalRequest)
             }
             
-            // レスポンスコードをチェック
-            when (response.code) {
-                401, 403 -> {
-                    // 認証エラーの場合、コールバック実行
-                    onAuthError?.invoke(response.code, response.message)
+            // 401エラーの場合、リフレッシュを試行
+            if (response.code == 401 && !isRefreshing && refreshTokenCallback != null && canRefresh()) {
+                response.close()
+                
+                synchronized(this) {
+                    if (!isRefreshing) {
+                        isRefreshing = true
+                        
+                        try {
+                            val refreshResult = kotlinx.coroutines.runBlocking {
+                                refreshTokenCallback?.invoke() ?: false
+                            }
+                            
+                            if (refreshResult) {
+                                recordRefresh()
+                                // リフレッシュ成功：新しいトークンで再試行
+                                val newAccessToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                                    tokenManager.getAccessToken()
+                                } else {
+                                    null
+                                }
+                                
+                                if (!newAccessToken.isNullOrEmpty()) {
+                                    val retryRequest = originalRequest.newBuilder()
+                                        .header("Authorization", "Bearer $newAccessToken")
+                                        .build()
+                                    response = chain.proceed(retryRequest)
+                                    Log.d(TAG, "トークンリフレッシュ後の再試行成功")
+                                } else {
+                                    Log.w(TAG, "リフレッシュ後のトークン取得に失敗")
+                                    onAuthError?.invoke(401, "トークンリフレッシュ後のトークン取得に失敗")
+                                }
+                            } else {
+                                // リフレッシュ失敗：ログイン画面へ
+                                Log.w(TAG, "リフレッシュトークンが無効")
+                                onAuthError?.invoke(401, "リフレッシュトークンが無効です")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "リフレッシュ処理中にエラー", e)
+                            onAuthError?.invoke(401, "認証エラー")
+                        } finally {
+                            isRefreshing = false
+                        }
+                    }
                 }
+            } else if (response.code == 401) {
+                // リフレッシュコールバックが設定されていない場合
+                Log.w(TAG, "401エラーですが、リフレッシュコールバックが未設定")
+                onAuthError?.invoke(401, "認証が必要です")
+            } else if (response.code == 403) {
+                // 権限エラー
+                onAuthError?.invoke(403, "アクセス権限がありません")
             }
             
             response
         } catch (securityException: SecurityException) {
-            // セキュリティエラーを適切にハンドリング
+            Log.e(TAG, "認証システムエラー", securityException)
             onAuthError?.invoke(500, "認証システムエラー: ${securityException.message}")
             chain.proceed(originalRequest)
         } catch (e: Exception) {
-            // エラーが発生した場合は元のリクエストを実行
+            Log.e(TAG, "インターセプターエラー", e)
             chain.proceed(originalRequest)
         }
+    }
+    
+    /**
+     * リフレッシュ頻度制限チェック
+     * @return リフレッシュ可能な場合true
+     */
+    private fun canRefresh(): Boolean {
+        val now = System.currentTimeMillis()
+        
+        // 1分間経過したらカウントリセット
+        if (now - lastRefreshTime > 60000) {
+            refreshCount = 0
+            lastRefreshTime = now
+        }
+        
+        // 1分間に3回まで
+        val canRefresh = refreshCount < 3
+        
+        if (!canRefresh) {
+            Log.w(TAG, "リフレッシュ頻度制限に達しました (${refreshCount}/3)")
+        }
+        
+        return canRefresh
+    }
+    
+    /**
+     * リフレッシュ実行を記録
+     */
+    private fun recordRefresh() {
+        refreshCount++
+        Log.d(TAG, "リフレッシュ実行記録: ${refreshCount}/3")
     }
 }
