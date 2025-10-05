@@ -23,6 +23,9 @@ interface ApiService {
     @POST("auth/refresh")
     suspend fun refreshToken(@Body refreshRequest: AuthDto.RefreshTokenRequest): Response<AuthDto.RefreshTokenResponse>
     
+    @POST("auth/logout")
+    suspend fun logout(@Body logoutRequest: AuthDto.LogoutRequest): Response<ResponseBody>
+    
     @FormUrlEncoded
     @POST("auth/oauth2/session")
     suspend fun getOAuth2Session(

@@ -19,4 +19,5 @@ interface AuthRepository {
     suspend fun getOAuth2Session(sessionId: String): Response<LoginResponse>
     suspend fun saveToken(token: String)
     suspend fun saveUserId(userId: String)
+    suspend fun saveRefreshToken(refreshToken: String)
 }
