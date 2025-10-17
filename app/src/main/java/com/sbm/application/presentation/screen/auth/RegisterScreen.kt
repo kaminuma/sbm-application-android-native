@@ -38,13 +38,32 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var showSuccessDialog by remember { mutableStateOf(false) }
     
     LaunchedEffect(uiState.registrationSuccess) {
         if (uiState.registrationSuccess) {
-                        // TODO: ここでSnackbarやToastで「登録が完了しました」メッセージを表示
-            authViewModel.clearRegistrationSuccess()
-            onNavigateToLogin()
+            showSuccessDialog = true
         }
+    }
+
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { /* ユーザーに明示的に閉じてもらう */ },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSuccessDialog = false
+                        authViewModel.clearRegistrationSuccess()
+                        onRegisterSuccess()
+                        onNavigateToLogin()
+                    }
+                ) {
+                    Text("ログイン画面へ")
+                }
+            },
+            title = { Text("登録が完了しました") },
+            text = { Text("登録が完了しました。ログイン画面からログインしてください。") }
+        )
     }
     
     Box(
