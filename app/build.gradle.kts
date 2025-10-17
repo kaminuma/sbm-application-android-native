@@ -34,7 +34,7 @@ val apiBaseUrl: String = getLocalProperty(
 
 android {
     namespace = "com.sbm.application"
-    compileSdk = 34
+    compileSdk = 35
 
     buildFeatures {
         buildConfig = true
@@ -112,9 +112,9 @@ android {
     defaultConfig {
         applicationId = "com.sbm.application"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 5
-        versionName = "1.0.4"
+        targetSdk = 35
+        versionCode = 6
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
