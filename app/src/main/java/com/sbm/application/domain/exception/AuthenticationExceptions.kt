@@ -13,3 +13,13 @@ class BadCredentialsException(
 ) : AuthenticationException(message)
 
 class AuthenticationFailedException(message: String) : AuthenticationException(message)
+
+/**
+ * リフレッシュトークンが期限切れまたは無効
+ */
+class RefreshTokenExpiredException(message: String) : AuthenticationException(message)
+
+/**
+ * 一時的なネットワークエラーやサーバーエラー
+ */
+class TemporaryAuthException(message: String, cause: Throwable? = null) : AuthenticationException(message, cause)

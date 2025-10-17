@@ -20,40 +20,18 @@ class AuthSessionManager @Inject constructor(
     suspend fun handleAuthenticationError(responseCode: Int, message: String? = null) {
         when (responseCode) {
             401 -> {
-                // Unauthorized - トークンが無効、リフレッシュを試行
-                if (!tryRefreshToken()) {
-                    clearSessionAndNotify("認証が無効です。再度ログインしてください。")
-                }
+                // Unauthorized - AuthInterceptorで既にリフレッシュ試行済み
+                // ここに到達した時点でリフレッシュ失敗またはトークン期限切れ確定
+                clearSessionAndNotify(message ?: "認証が無効です。再度ログインしてください。")
             }
             403 -> {
-                // Forbidden - アクセス権限なし（JWTの期限切れ等）、リフレッシュを試行
-                if (!tryRefreshToken()) {
-                    clearSessionAndNotify("セッションが期限切れです。再度ログインしてください。")
-                }
+                // Forbidden - アクセス権限なし
+                clearSessionAndNotify(message ?: "アクセス権限がありません。")
             }
             else -> {
                 // その他の認証エラー
                 _authErrorFlow.tryEmit(message ?: "認証エラーが発生しました")
             }
-        }
-    }
-
-    
-    /**
-     * トークンリフレッシュを試行
-     * @return リフレッシュに成功した場合はtrue、失敗した場合はfalse
-     */
-    private suspend fun tryRefreshToken(): Boolean {
-        return try {
-            val result = authRepository.refreshToken()
-            if (result.isSuccess) {
-                _authErrorFlow.tryEmit("トークンを更新しました")
-                true
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            false
         }
     }
     
@@ -64,10 +42,10 @@ class AuthSessionManager @Inject constructor(
         try {
             // 認証情報をクリア
             authRepository.clearAuth()
-            
+
             // UIに認証エラーを通知
             _authErrorFlow.tryEmit(errorMessage)
-            
+
             // セッション期限切れイベントを発火
             _sessionExpiredFlow.tryEmit(Unit)
         } catch (e: Exception) {

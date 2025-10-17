@@ -80,11 +80,10 @@ object JWTValidator {
                 return false
             }
             
-            // 有効期限検証（5分の余裕を持たせる）
+            // 有効期限検証（期限切れまで有効）
             val currentTime = Date()
-            val bufferTime = Date(currentTime.time + 5 * 60 * 1000) // 5分後
             
-            return expiresAt != null && expiresAt.after(bufferTime)
+            return expiresAt != null && currentTime.before(expiresAt)
             
         } catch (e: Exception) {
             return false

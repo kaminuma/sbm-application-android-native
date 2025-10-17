@@ -229,20 +229,22 @@ class AuthRepositoryImpl @Inject constructor(
             try {
                 val refreshToken = getStoredRefreshToken()
                 if (refreshToken.isNullOrEmpty()) {
-                    return@withContext Result.failure(Exception("リフレッシュトークンが見つかりません"))
+                    return@withContext Result.failure(
+                        com.sbm.application.domain.exception.RefreshTokenExpiredException("リフレッシュトークンが見つかりません")
+                    )
                 }
-                
+
                 val response = apiService.refreshToken(
                     AuthDto.RefreshTokenRequest(refreshToken = refreshToken)
                 )
-                
+
                 if (response.isSuccessful) {
                     val refreshResponse = response.body()
                     if (refreshResponse != null && !refreshResponse.token.isNullOrEmpty()) {
                         // セキュアなトークン保存
                         try {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                                tokenManager.saveAccessToken(refreshResponse.token!!)
+                                tokenManager.saveAccessToken(refreshResponse.token)
                                 if (!refreshResponse.refreshToken.isNullOrEmpty()) {
                                     tokenManager.saveRefreshToken(refreshResponse.refreshToken)
                                 }
@@ -254,18 +256,42 @@ class AuthRepositoryImpl @Inject constructor(
                         } catch (e: SecurityException) {
                             return@withContext Result.failure(e)
                         }
-                        
+
                         cachedToken = refreshResponse.token
-                        
-                        Result.success(Pair(refreshResponse.token!!, refreshResponse.refreshToken ?: refreshToken))
+
+                        Result.success(Pair(refreshResponse.token, refreshResponse.refreshToken ?: refreshToken))
                     } else {
-                        Result.failure(Exception("トークンリフレッシュ応答が無効です"))
+                        Result.failure(
+                            com.sbm.application.domain.exception.TemporaryAuthException("トークンリフレッシュ応答が無効です")
+                        )
                     }
                 } else {
-                    Result.failure(Exception("トークンリフレッシュに失敗しました: ${response.message()}"))
+                    // HTTPステータスコードで判定
+                    val exception = when (response.code()) {
+                        401, 403 -> com.sbm.application.domain.exception.RefreshTokenExpiredException(
+                            "リフレッシュトークンが期限切れです"
+                        )
+                        in 500..599 -> com.sbm.application.domain.exception.TemporaryAuthException(
+                            "サーバーエラーが発生しました (${response.code()})"
+                        )
+                        else -> com.sbm.application.domain.exception.TemporaryAuthException(
+                            "トークンリフレッシュに失敗しました: ${response.message()}"
+                        )
+                    }
+                    Result.failure(exception)
                 }
+            } catch (e: java.net.SocketTimeoutException) {
+                Result.failure(
+                    com.sbm.application.domain.exception.TemporaryAuthException("接続がタイムアウトしました", e)
+                )
+            } catch (e: java.io.IOException) {
+                Result.failure(
+                    com.sbm.application.domain.exception.TemporaryAuthException("ネットワークエラーが発生しました", e)
+                )
             } catch (e: Exception) {
-                Result.failure(e)
+                Result.failure(
+                    com.sbm.application.domain.exception.TemporaryAuthException("リフレッシュ処理中にエラーが発生しました", e)
+                )
             }
         }
     }
@@ -381,15 +407,30 @@ class AuthRepositoryImpl @Inject constructor(
     
     /**
      * AuthInterceptor専用のリフレッシュメソッド
-     * @return 成功した場合true、失敗した場合false
+     * @return リフレッシュ結果（SUCCESS/RETRYABLE_FAILURE/PERMANENT_FAILURE）
      */
-    private suspend fun refreshTokenForInterceptor(): Boolean {
+    private suspend fun refreshTokenForInterceptor(): AuthInterceptor.RefreshResult {
         return try {
             val result = refreshToken()
-            result.isSuccess
+            if (result.isSuccess) {
+                AuthInterceptor.RefreshResult.SUCCESS
+            } else {
+                val exception = result.exceptionOrNull()
+                when (exception) {
+                    is com.sbm.application.domain.exception.RefreshTokenExpiredException -> {
+                        AuthInterceptor.RefreshResult.PERMANENT_FAILURE
+                    }
+                    is com.sbm.application.domain.exception.TemporaryAuthException -> {
+                        AuthInterceptor.RefreshResult.RETRYABLE_FAILURE
+                    }
+                    else -> {
+                        AuthInterceptor.RefreshResult.PERMANENT_FAILURE
+                    }
+                }
+            }
         } catch (e: Exception) {
             com.sbm.application.data.security.SecureLogger.error("AuthRepository", "インターセプターからのリフレッシュ失敗", e)
-            false
+            AuthInterceptor.RefreshResult.PERMANENT_FAILURE
         }
     }
 

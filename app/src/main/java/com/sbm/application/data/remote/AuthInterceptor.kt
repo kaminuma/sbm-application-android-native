@@ -16,8 +16,15 @@ class AuthInterceptor @Inject constructor(
         // 認証エラー時のコールバック
         var onAuthError: ((Int, String) -> Unit)? = null
         // トークンリフレッシュコールバック（AuthRepositoryから設定）
-        var refreshTokenCallback: (suspend () -> Boolean)? = null
+        // 戻り値: Success=成功, RetryableFailure=リトライ可能, PermanentFailure=永続的失敗
+        var refreshTokenCallback: (suspend () -> RefreshResult)? = null
         private const val TAG = "AuthInterceptor"
+    }
+
+    enum class RefreshResult {
+        SUCCESS,           // リフレッシュ成功
+        RETRYABLE_FAILURE, // 一時的なエラー（リトライ可能）
+        PERMANENT_FAILURE  // リフレッシュトークン期限切れ（リトライ不可）
     }
 
     // セキュアなトークン管理
@@ -76,32 +83,68 @@ class AuthInterceptor @Inject constructor(
                             // TODO: runBlockingの使用はOkHttpスレッドプールをブロックするため非推奨
                             // 将来的にAuthenticatorへの移行を検討 (Issue #XX)
                             val refreshResult = kotlinx.coroutines.runBlocking {
-                                refreshTokenCallback?.invoke() ?: false
+                                refreshTokenCallback?.invoke() ?: RefreshResult.PERMANENT_FAILURE
                             }
 
-                            if (refreshResult) {
-                                recordRefresh()
-                                // リフレッシュ成功：新しいトークンで再試行
-                                val newAccessToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                                    tokenManager.getAccessToken()
-                                } else {
-                                    null
-                                }
+                            when (refreshResult) {
+                                RefreshResult.SUCCESS -> {
+                                    recordRefresh()
+                                    // リフレッシュ成功：新しいトークンで再試行
+                                    val newAccessToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                                        tokenManager.getAccessToken()
+                                    } else {
+                                        null
+                                    }
 
-                                if (!newAccessToken.isNullOrEmpty()) {
-                                    val retryRequest = originalRequest.newBuilder()
-                                        .header("Authorization", "Bearer $newAccessToken")
-                                        .build()
-                                    response = chain.proceed(retryRequest)
-                                    SecureLogger.debug(TAG, "トークンリフレッシュ後の再試行成功")
-                                } else {
-                                    SecureLogger.warn(TAG, "リフレッシュ後のトークン取得に失敗")
-                                    onAuthError?.invoke(401, "トークンリフレッシュ後のトークン取得に失敗")
+                                    if (!newAccessToken.isNullOrEmpty()) {
+                                        val retryRequest = originalRequest.newBuilder()
+                                            .header("Authorization", "Bearer $newAccessToken")
+                                            .build()
+                                        response = chain.proceed(retryRequest)
+                                        SecureLogger.debug(TAG, "トークンリフレッシュ後の再試行成功")
+                                    } else {
+                                        SecureLogger.warn(TAG, "リフレッシュ後のトークン取得に失敗")
+                                        onAuthError?.invoke(401, "トークンリフレッシュ後のトークン取得に失敗")
+                                    }
                                 }
-                            } else {
-                                // リフレッシュ失敗：ログイン画面へ
-                                SecureLogger.warn(TAG, "リフレッシュトークンが無効")
-                                onAuthError?.invoke(401, "リフレッシュトークンが無効です")
+                                RefreshResult.RETRYABLE_FAILURE -> {
+                                    // 一時的なエラー：1回だけリトライ
+                                    SecureLogger.debug(TAG, "一時的なエラーのためリトライ")
+
+                                    val retryResult = kotlinx.coroutines.runBlocking {
+                                        kotlinx.coroutines.delay(500) // 短い遅延
+                                        refreshTokenCallback?.invoke() ?: RefreshResult.PERMANENT_FAILURE
+                                    }
+
+                                    if (retryResult == RefreshResult.SUCCESS) {
+                                        recordRefresh()
+                                        val newAccessToken = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                                            tokenManager.getAccessToken()
+                                        } else {
+                                            null
+                                        }
+
+                                        if (!newAccessToken.isNullOrEmpty()) {
+                                            val retryRequest = originalRequest.newBuilder()
+                                                .header("Authorization", "Bearer $newAccessToken")
+                                                .build()
+                                            response = chain.proceed(retryRequest)
+                                            SecureLogger.debug(TAG, "リトライ後にリフレッシュ成功")
+                                        } else {
+                                            SecureLogger.warn(TAG, "リトライ後のトークン取得に失敗")
+                                            onAuthError?.invoke(401, "認証エラー")
+                                        }
+                                    } else {
+                                        // リトライしても失敗
+                                        SecureLogger.warn(TAG, "リトライ後も失敗")
+                                        onAuthError?.invoke(401, "ネットワークエラーのため認証に失敗しました")
+                                    }
+                                }
+                                RefreshResult.PERMANENT_FAILURE -> {
+                                    // リフレッシュトークン期限切れ：ログイン画面へ
+                                    SecureLogger.warn(TAG, "リフレッシュトークンが無効")
+                                    onAuthError?.invoke(401, "リフレッシュトークンが無効です")
+                                }
                             }
                         } catch (e: Exception) {
                             SecureLogger.error(TAG, "リフレッシュ処理中にエラー", e)
